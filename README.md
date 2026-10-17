@@ -1,19 +1,50 @@
 # Build My TV Station
 
-An admin panel that sets up a complete TV station step by step and monitors each of its parts. It orchestrates these projects:
+**An orchestrator for a complete TV station.** Build My TV Station is the admin panel that ties my other projects together: it deploys each of them, connects them into one working station, puts them behind one public address and keeps an eye on every part.
+
+You install only this panel. Its *Create My TV Station* wizard does the rest: it creates a container or virtual machine for every part on your Proxmox server (or uses separate machines), installs the latest version of each project with that project's own installer, and sets up nginx in front of them.
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+## The projects it orchestrates
 
 | Part | Project | What it does |
 |---|---|---|
-| Channel generator | [Beeldkrant](https://github.com/rhisijmuiden/TV-Channel-Generator) | Builds the channel and sends it out as an RTMP or SRT stream |
+| Channel generator | [Beeldkrant](https://github.com/rhisijmuiden/TV-Channel-Generator) | Builds the channel and sends it out as an RTMP or SRT stream. You can run several, one per channel |
 | Distribution server | [MediaMTX Panel](https://github.com/rhisijmuiden/Mediamtx-controlpanel) | Receives the stream and serves it to viewers (HLS, WebRTC, RTSP, SRT) |
 | IPTV portal | [IPTV Portal](https://github.com/rhisijmuiden/iptv-portal) | Lists the channels for TV boxes and IPTV apps |
 | Reverse proxy | nginx (set up by this panel) | Publishes every part under one public domain, each on its own path |
+
+```text
+              Build My TV Station (this panel)
+         deploys, connects, monitors and updates
+                            │
+     ┌──────────────────────┼──────────────────────┐
+     ▼                      ▼                      ▼
+ Beeldkrant ──RTMP/SRT──▶ MediaMTX Panel ──────▶ IPTV Portal ──▶ TV boxes / apps
+ (channel 1..n)          (distribution)          (channel list)
+     └──────────────────────┴──────────────────────┘
+          nginx: https://tv.example.com/channel1/, /stream/, /
+```
+
+Each project stays a standalone project with its own installer: the panel uses those installers as they are, so every part can still be installed on its own without this panel.
 
 - Admin panel on port **8080**
 - Runs in a **Debian 13 LXC container** on Proxmox VE, or on a **minimal Debian 13** machine or VPS
 - Everything (code, UI, docs) in English; the web interface is also available in **Dutch**
 
 > **Status:** in development. Login, the one-time admin password, updates from the panel, monitoring of parts you add by hand and wizard steps 1 to 3 (location, the Proxmox connection and choosing the parts) work. Deploying the parts is next.
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Wizard step 1: location](docs/screenshots/wizard-1-location.png) | ![Wizard step 2: Proxmox connection](docs/screenshots/wizard-2-proxmox.png) |
+| **Step 1.** One Proxmox server or separate machines | **Step 2.** Connect to Proxmox, choose LXC or VMs, storage, bridge and resource pool |
+| ![Wizard step 3: parts and resources](docs/screenshots/wizard-3-parts.png) | ![Version and updates](docs/screenshots/version-and-updates.png) |
+| **Step 3.** Parts, resources, public domain and a path per part | **Version and updates.** Update the panel from the browser |
+| ![First login](docs/screenshots/first-login-password.png) | ![Dashboard in Dutch](docs/screenshots/dashboard-nl.png) |
+| **First login.** The one-time password must be changed | **Dutch.** The whole interface is also available in Dutch |
 
 ## Install
 
@@ -88,6 +119,7 @@ The first start prints the one-time admin password and stores it in `DATA_DIR/in
 | `install/debian.sh` | Standalone installer for Debian 13 |
 | `scripts/` | The `update` / `tvstation-update` and `tvstation-admin-reset` commands |
 | `deploy/` | systemd units for the panel and for updates started from the panel |
+| `docs/screenshots/` | The screenshots in this README |
 
 ## License
 

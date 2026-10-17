@@ -45,7 +45,7 @@
   "wizard.step1.title": "Where should the station run?",
   "wizard.step1.intro": "Choose how the parts of your TV station are hosted. You can change this later by starting over.",
   "wizard.target.proxmox": "One Proxmox server",
-  "wizard.target.proxmox.about": "Each part gets its own LXC container on a Proxmox VE server. The panel creates the containers for you.",
+  "wizard.target.proxmox.about": "Each part gets its own LXC container or Debian 13 virtual machine on a Proxmox VE server. The panel creates them for you.",
   "wizard.target.machines": "Separate machines",
   "wizard.target.machines.about": "Each part runs on its own VPS or physical machine with Debian 13. The panel installs them over SSH.",
   "wizard.next": "Next",

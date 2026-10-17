@@ -45,7 +45,7 @@
   "wizard.step1.title": "Waar moet het station draaien?",
   "wizard.step1.intro": "Kies hoe de onderdelen van je tv-station gehost worden. Je kunt dit later wijzigen door opnieuw te beginnen.",
   "wizard.target.proxmox": "Eén Proxmox-server",
-  "wizard.target.proxmox.about": "Elk onderdeel krijgt een eigen LXC-container op een Proxmox VE-server. Het panel maakt de containers voor je aan.",
+  "wizard.target.proxmox.about": "Elk onderdeel krijgt een eigen LXC-container of virtuele Debian 13-machine op een Proxmox VE-server. Het panel maakt ze voor je aan.",
   "wizard.target.machines": "Losse machines",
   "wizard.target.machines.about": "Elk onderdeel draait op een eigen VPS of fysieke machine met Debian 13. Het panel installeert ze via SSH.",
   "wizard.next": "Volgende",
