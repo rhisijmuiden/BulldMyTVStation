@@ -39,7 +39,7 @@ fi
 info "Installing packages"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq git ca-certificates curl nodejs npm >/dev/null
+apt-get install -y -qq git ca-certificates curl openssh-client nodejs npm >/dev/null
 NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
 (( NODE_MAJOR >= 20 )) || die "Node.js 20 or newer is needed; Debian installed $(node -v)."
 ok "Installed git and Node.js $(node -v)"

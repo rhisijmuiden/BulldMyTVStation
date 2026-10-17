@@ -1,6 +1,6 @@
 {
   "name": "tvstation",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Admin panel that sets up and monitors a complete TV station: channel generator, distribution server and IPTV portal",
   "main": "server/index.js",
   "type": "commonjs",

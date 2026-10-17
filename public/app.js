@@ -190,49 +190,200 @@ async function renderDashboard() {
     : `<p class="card empty">${esc(t('dashboard.noParts'))}</p>`}`);
 }
 
+// ---------- wizard ----------
+const WIZARD_STEPS = ['target', 'connection', 'parts', 'deploy', 'connect', 'overview'];
+
+function stepper(current) {
+  return `<ol class="stepper">${WIZARD_STEPS.map((s, i) => `<li class="${i + 1 === current ? 'current' : i + 1 < current ? 'done' : ''}">${esc(t(`wizard.steps.${s}`))}</li>`).join('')}</ol>`;
+}
+
+function wizardShell(step, body) {
+  shell('wizard', `
+    <h1>${esc(t('wizard.title'))}</h1>
+    ${stepper(step)}
+    <div class="card">
+      <p class="hint">${esc(t('wizard.step', { n: step, total: WIZARD_STEPS.length }))}</p>
+      ${body}
+    </div>`);
+}
+
+const backButton = () => `<button type="button" id="back">${esc(t('wizard.back'))}</button>`;
+function bindBack(step) {
+  const b = document.getElementById('back');
+  if (b) b.onclick = async () => { await api('PUT', '/api/station', { step: step - 1 }); renderWizard(); };
+}
+
+function formatBytes(n) {
+  if (!n) return '';
+  const gb = n / 1024 ** 3;
+  return gb >= 1024 ? `${(gb / 1024).toFixed(1)} TB` : `${Math.round(gb)} GB`;
+}
+
 async function renderWizard() {
   const { station, catalog } = await api('GET', '/api/station');
-  const total = 2;
-  if (!station.target) {
-    shell('wizard', `
-      <div class="card">
-        <p class="hint">${esc(t('wizard.step', { n: 1, total }))}</p>
-        <h1>${esc(t('wizard.step1.title'))}</h1>
-        <p>${esc(t('wizard.step1.intro'))}</p>
-        <form id="target">
-          <div class="choices">${['proxmox', 'machines'].map((v) => `
-            <label class="choice"><input type="radio" name="target" value="${v}" required>
-              <span><strong>${esc(t(`wizard.target.${v}`))}</strong><span class="hint">${esc(t(`wizard.target.${v}.about`))}</span></span>
-            </label>`).join('')}</div>
-          <p class="error" hidden></p>
-          <button class="primary">${esc(t('wizard.next'))}</button>
-        </form>
-      </div>`);
-    const form = document.getElementById('target');
-    form.onsubmit = async (e) => {
-      e.preventDefault();
-      try { await api('PUT', '/api/station', { target: new FormData(form).get('target') }); renderWizard(); } catch (err) { showError(form, err); }
-    };
-    return;
-  }
-  shell('wizard', `
-    <div class="card">
-      <p class="hint">${esc(t('wizard.step', { n: 2, total }))} · ${esc(t(`wizard.target.${station.target}`))}</p>
-      <h1>${esc(t('wizard.step2.title'))}</h1>
-      <p>${esc(t(`wizard.step2.intro.${station.target}`))}</p>
-      <div class="grid">${Object.entries(catalog).map(([type, c]) => {
-        const ready = c.installer && (station.target === 'proxmox' ? c.proxmoxScript : c.debianScript || c.proxmoxScript);
-        return `<div class="card part">
-          <div class="part-head"><strong>${esc(t(`role.${type}`))}</strong><span class="badge ${ready ? 'up' : 'unknown'}">${esc(t(ready ? 'wizard.installer' : 'wizard.noInstaller'))}</span></div>
-          <div>${esc(c.project)}</div>
-          <p class="hint">${esc(t(`role.${type}.about`))}</p>
-          <a href="${esc(c.repo)}" target="_blank" rel="noopener">${esc(t('wizard.source'))}</a>
-        </div>`;
-      }).join('')}</div>
-      <p class="notice">${esc(t('wizard.step2.pending'))}</p>
-      <div class="actions"><button id="restart">${esc(t('wizard.restart'))}</button><a class="button primary" href="#/components">${esc(t('nav.components'))}</a></div>
-    </div>`);
-  document.getElementById('restart').onclick = async () => { await api('DELETE', '/api/station'); renderWizard(); };
+  const step = station.target ? Math.min(station.step || 2, 3) : 1;
+  if (step === 1) return renderTargetStep(station);
+  if (step === 2) return station.target === 'proxmox' ? renderProxmoxStep(station) : renderMachinesStep();
+  return renderPartsStep(station, catalog);
+}
+
+function renderTargetStep(station) {
+  wizardShell(1, `
+    <h2>${esc(t('wizard.step1.title'))}</h2>
+    <p>${esc(t('wizard.step1.intro'))}</p>
+    <form id="target">
+      <div class="choices">${['proxmox', 'machines'].map((v) => `
+        <label class="choice"><input type="radio" name="target" value="${v}" required ${station.target === v ? 'checked' : ''}>
+          <span><strong>${esc(t(`wizard.target.${v}`))}</strong><span class="hint">${esc(t(`wizard.target.${v}.about`))}</span></span>
+        </label>`).join('')}</div>
+      <p class="error" hidden></p>
+      <div class="actions"><button class="primary">${esc(t('wizard.next'))}</button></div>
+    </form>`);
+  const form = document.getElementById('target');
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    try { await api('PUT', '/api/station', { target: new FormData(form).get('target') }); renderWizard(); } catch (err) { showError(form, err); }
+  };
+}
+
+function renderMachinesStep() {
+  wizardShell(2, `
+    <h2>${esc(t('wizard.machines.title'))}</h2>
+    <p class="notice">${esc(t('wizard.machines.pending'))}</p>
+    <div class="actions">${backButton()}</div>`);
+  bindBack(2);
+}
+
+async function renderProxmoxStep(station) {
+  const saved = station.proxmox || {};
+  const { publicKey } = await api('GET', '/api/proxmox/key');
+  const authorize = `echo '${publicKey}' >> /root/.ssh/authorized_keys`;
+  wizardShell(2, `
+    <h2>${esc(t('wizard.proxmox.title'))}</h2>
+    <p>${esc(t('wizard.proxmox.intro'))}</p>
+    <h3>${esc(t('wizard.proxmox.keyTitle'))}</h3>
+    <p>${esc(t('wizard.proxmox.keyIntro'))}</p>
+    <div class="copy"><pre id="authorize">${esc(authorize)}</pre><button type="button" id="copy">${esc(t('wizard.copy'))}</button></div>
+    <form id="connect" class="row">
+      <label class="grow">${esc(t('wizard.proxmox.host'))}<input name="host" required placeholder="192.168.1.10" value="${esc(saved.host || '')}"></label>
+      <label class="small">${esc(t('wizard.proxmox.port'))}<input name="port" type="number" min="1" max="65535" value="${esc(saved.port || 22)}"></label>
+      <button class="primary" id="connect-button">${esc(t('wizard.proxmox.connect'))}</button>
+      <p class="error wide" hidden></p>
+    </form>
+    <div id="found"></div>
+    <div class="actions" id="step-actions">${backButton()}</div>`);
+  bindBack(2);
+  document.getElementById('copy').onclick = async (e) => {
+    try { await navigator.clipboard.writeText(authorize); e.target.textContent = t('wizard.copied'); } catch { /* not allowed on plain http */ }
+  };
+  const form = document.getElementById('connect');
+  const connect = async () => {
+    const f = new FormData(form);
+    const target = { host: f.get('host'), port: Number(f.get('port') || 22) };
+    const button = document.getElementById('connect-button');
+    button.disabled = true;
+    button.textContent = t('wizard.proxmox.connecting');
+    form.querySelector('.error').hidden = true;
+    try {
+      const { found } = await api('POST', '/api/proxmox/discover', target);
+      renderProxmoxChoices(target, found, saved);
+    } catch (err) {
+      showError(form, err);
+      document.getElementById('found').innerHTML = '';
+    }
+    button.disabled = false;
+    button.textContent = t('wizard.proxmox.connect');
+  };
+  form.onsubmit = (e) => { e.preventDefault(); connect(); };
+  if (saved.host) connect();
+}
+
+function renderProxmoxChoices(target, found, saved) {
+  const box = document.getElementById('found');
+  const guestType = saved.guestType || 'lxc';
+  box.innerHTML = `
+    <p class="ok">${esc(t('wizard.proxmox.connected', { node: found.node, version: found.version }))}</p>
+    ${found.fingerprint ? `<p class="hint">${esc(t('wizard.proxmox.fingerprint'))} <code>${esc(found.fingerprint)}</code></p>` : ''}
+    <form id="choices">
+      <h3>${esc(t('wizard.proxmox.guestTitle'))}</h3>
+      <div class="choices">${['lxc', 'vm'].map((v) => `
+        <label class="choice"><input type="radio" name="guestType" value="${v}" ${v === guestType ? 'checked' : ''}>
+          <span><strong>${esc(t(`wizard.guest.${v}`))}</strong><span class="hint">${esc(t(`wizard.guest.${v}.about`))}</span></span>
+        </label>`).join('')}</div>
+      <h3>${esc(t('wizard.proxmox.placement'))}</h3>
+      <label>${esc(t('wizard.proxmox.storage'))}<select name="storage" required></select></label>
+      <p class="hint" id="storage-hint"></p>
+      <label>${esc(t('wizard.proxmox.bridge'))}<select name="bridge" required>${found.bridges.map((b) => `<option ${b === saved.bridge ? 'selected' : ''}>${esc(b)}</option>`).join('')}</select></label>
+      <label>${esc(t('wizard.proxmox.pool'))}<input name="pool" required maxlength="40" pattern="[A-Za-z0-9][A-Za-z0-9_\\-]*" list="pools" value="${esc(saved.pool || 'tvstation')}"></label>
+      <datalist id="pools">${found.pools.map((p) => `<option value="${esc(p)}">`).join('')}</datalist>
+      <p class="hint" id="pool-hint"></p>
+      <p class="error" hidden></p>
+      <div class="actions">${backButton()}<button class="primary">${esc(t('wizard.saveNext'))}</button></div>
+    </form>`;
+  // The form now has its own Back button next to Save.
+  const outer = document.getElementById('step-actions');
+  if (outer) outer.remove();
+  bindBack(2);
+  const form = document.getElementById('choices');
+  const fillStorage = () => {
+    const type = new FormData(form).get('guestType');
+    const fits = found.storage.filter((s) => s.content.includes(type === 'vm' ? 'images' : 'rootdir'));
+    const sel = form.querySelector('[name=storage]');
+    const keep = sel.value || saved.storage;
+    sel.innerHTML = fits.map((s) => `<option value="${esc(s.id)}" ${s.id === keep ? 'selected' : ''}>${esc(s.id)} (${esc(s.type)}${s.avail ? `, ${esc(t('wizard.proxmox.free', { size: formatBytes(s.avail) }))}` : ''})</option>`).join('');
+    document.getElementById('storage-hint').textContent = fits.length ? '' : t('wizard.proxmox.noStorage');
+  };
+  const poolHint = () => {
+    const name = form.querySelector('[name=pool]').value.trim();
+    document.getElementById('pool-hint').textContent = t(found.pools.includes(name) ? 'wizard.proxmox.poolExists' : 'wizard.proxmox.poolNew');
+  };
+  form.querySelectorAll('[name=guestType]').forEach((r) => { r.onchange = fillStorage; });
+  form.querySelector('[name=pool]').oninput = poolHint;
+  fillStorage();
+  poolHint();
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const f = Object.fromEntries(new FormData(form));
+    const button = form.querySelector('button.primary');
+    button.disabled = true;
+    try {
+      await api('PUT', '/api/station/proxmox', { ...target, ...f });
+      renderWizard();
+    } catch (err) { showError(form, err); button.disabled = false; }
+  };
+}
+
+function renderPartsStep(station, catalog) {
+  const px = station.proxmox;
+  const viaScript = station.target === 'proxmox' && px && px.guestType === 'lxc';
+  const summary = px ? `
+    <dl class="facts">
+      <dt>${esc(t('wizard.proxmox.node'))}</dt><dd>${esc(px.node)} (${esc(px.host)})</dd>
+      <dt>${esc(t('wizard.proxmox.guestTitle'))}</dt><dd>${esc(t(`wizard.guest.${px.guestType}`))}</dd>
+      <dt>${esc(t('wizard.proxmox.storage'))}</dt><dd>${esc(px.storage)}</dd>
+      <dt>${esc(t('wizard.proxmox.bridge'))}</dt><dd>${esc(px.bridge)}</dd>
+      <dt>${esc(t('wizard.proxmox.pool'))}</dt><dd>${esc(px.pool)}</dd>
+    </dl>` : '';
+  wizardShell(3, `
+    <h2>${esc(t('wizard.parts.title'))}</h2>
+    ${summary}
+    <div class="grid">${Object.entries(catalog).map(([type, c]) => {
+      const ready = c.installer && (viaScript ? c.proxmoxScript : c.debianScript);
+      return `<div class="card part">
+        <div class="part-head"><strong>${esc(t(`role.${type}`))}</strong><span class="badge ${ready ? 'up' : 'unknown'}">${esc(t(ready ? 'wizard.installer' : 'wizard.noInstaller'))}</span></div>
+        <div>${esc(c.project)}</div>
+        <p class="hint">${esc(t(`role.${type}.about`))}</p>
+        <a href="${esc(c.repo)}" target="_blank" rel="noopener">${esc(t('wizard.source'))}</a>
+      </div>`;
+    }).join('')}</div>
+    <p class="notice">${esc(t('wizard.parts.pending'))}</p>
+    <div class="actions">${backButton()}<button id="restart">${esc(t('wizard.restart'))}</button></div>`);
+  bindBack(3);
+  document.getElementById('restart').onclick = async () => {
+    if (!confirm(t('wizard.confirmRestart'))) return;
+    await api('DELETE', '/api/station');
+    renderWizard();
+  };
 }
 
 async function renderComponents(editId) {

@@ -53,6 +53,11 @@ trap 'systemctl is-active --quiet "$SERVICE" || systemctl start "$SERVICE" || tr
 
 info "Installing ${LATEST:0:7}"
 git_ reset --quiet --hard FETCH_HEAD
+# System packages that newer versions need (the panel talks to Proxmox over SSH).
+if ! command -v ssh >/dev/null; then
+  info "Installing system packages"
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq openssh-client >/dev/null || die "Installing openssh-client failed."
+fi
 (cd "$APP_DIR" && npm ci --omit=dev --no-audit --no-fund --loglevel=error --silent) || die "Installing dependencies failed; the panel was restarted with the files it has now."
 chown -R "$SERVICE:$SERVICE" "$APP_DIR"
 source "$APP_DIR/scripts/install-system-files.sh"

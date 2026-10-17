@@ -6,6 +6,7 @@ const store = require('./store');
 const auth = require('./auth');
 const components = require('./components');
 const updater = require('./updater');
+const proxmox = require('./proxmox');
 const pkg = require('../package.json');
 
 const PORT = Number(process.env.PORT) || 8080;
@@ -101,16 +102,61 @@ app.get('/api/station', auth.requireAuth, (req, res) => {
   res.json({ station: store.getSection('station'), catalog: components.CATALOG });
 });
 
+// Step 1 (where the station runs), or going back to an earlier step.
 app.put('/api/station', auth.requireAuth, (req, res) => {
-  const { target } = req.body || {};
+  const { target, step } = req.body || {};
+  const station = store.getSection('station');
+  if (step !== undefined) {
+    if (!Number.isInteger(step) || step < 1 || step > (station.step || 1)) return res.status(400).json({ error: 'errors.step' });
+    return res.json({ station: store.setSection('station', { step }) });
+  }
   if (!TARGETS.includes(target)) return res.status(400).json({ error: 'errors.target' });
   res.json({ station: store.setSection('station', { target, step: 2 }) });
 });
 
 app.delete('/api/station', auth.requireAuth, (req, res) => {
-  store.setSection('station', { target: null, step: 1 });
+  store.setSection('station', { target: null, step: 1, proxmox: null });
   res.json({ station: store.getSection('station') });
 });
+
+// ---------- step 2: Proxmox connection ----------
+app.get('/api/proxmox/key', auth.requireAuth, wrap(async (req, res) => {
+  res.json({ publicKey: await proxmox.publicKey() });
+}));
+
+// Connects to the node and returns what the wizard can offer there.
+app.post('/api/proxmox/discover', auth.requireAuth, wrap(async (req, res) => {
+  const { error, value } = proxmox.validateTarget(req.body || {});
+  if (error) return res.status(400).json({ error });
+  await proxmox.publicKey();
+  try {
+    res.json({ found: await proxmox.discover(value) });
+  } catch (err) {
+    if (!err.key) throw err;
+    res.status(502).json({ error: err.key, detail: err.message.trim().slice(-300) });
+  }
+}));
+
+// Saves the choices after checking them against the node again, and creates the resource pool.
+app.put('/api/station/proxmox', auth.requireAuth, wrap(async (req, res) => {
+  const body = req.body || {};
+  const { error, value: target } = proxmox.validateTarget(body);
+  if (error) return res.status(400).json({ error });
+  const choice = { storage: String(body.storage || ''), bridge: String(body.bridge || ''), pool: String(body.pool || '').trim(), guestType: String(body.guestType || '') };
+  let found;
+  let poolCreated;
+  try {
+    found = await proxmox.discover(target);
+    const invalid = proxmox.choiceError(found, choice);
+    if (invalid) return res.status(400).json({ error: invalid });
+    poolCreated = await proxmox.ensurePool(target, choice.pool);
+  } catch (err) {
+    if (!err.key) throw err;
+    return res.status(502).json({ error: err.key, detail: err.message.trim().slice(-300) });
+  }
+  const saved = { ...target, ...choice, node: found.node, version: found.version, fingerprint: found.fingerprint, savedAt: new Date().toISOString() };
+  res.json({ station: store.setSection('station', { proxmox: saved, step: 3 }), poolCreated });
+}));
 
 // ---------- components and monitoring ----------
 app.get('/api/components', auth.requireAuth, (req, res) => {

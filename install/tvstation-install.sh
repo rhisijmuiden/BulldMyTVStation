@@ -15,7 +15,7 @@ TVSTATION_REPO="${TVSTATION_REPO:-https://github.com/rhisijmuiden/BulldMyTVStati
 TVSTATION_REF="${TVSTATION_REF:-main}"
 
 msg_info "Installing Dependencies"
-$STD apt-get install -y git ca-certificates curl
+$STD apt-get install -y git ca-certificates curl openssh-client
 msg_ok "Installed Dependencies"
 
 NODE_VERSION="22" setup_nodejs

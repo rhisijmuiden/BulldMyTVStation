@@ -100,6 +100,19 @@ td { padding: .6rem .5rem; border-bottom: 1px solid var(--border); vertical-alig
 .facts dd { margin: 0; overflow-wrap: anywhere; }
 .log { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; overflow-x: auto; font-size: .85rem; white-space: pre-wrap; }
 .center-text { text-align: center; }
+h3 { font-size: 1rem; margin: 1.5rem 0 .5rem; }
+.stepper { display: flex; gap: .5rem; list-style: none; padding: 0; margin: 0 0 1rem; counter-reset: step; flex-wrap: wrap; }
+.stepper li { counter-increment: step; flex: 1; min-width: 110px; padding: .5rem .75rem; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); font-size: .9rem; }
+.stepper li::before { content: counter(step) ". "; }
+.stepper li.done { color: var(--up); }
+.stepper li.current { border-color: var(--accent); color: var(--text); font-weight: 600; }
+.copy { display: flex; gap: .5rem; align-items: flex-start; }
+.copy pre { flex: 1; margin: 0; padding: .6rem .75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; font-size: .8rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.row { display: flex; gap: .75rem; align-items: flex-end; flex-wrap: wrap; margin-top: 1.25rem; }
+.row label { margin-bottom: 0; }
+.row .grow { flex: 1; min-width: 200px; }
+.row .small { width: 110px; }
+.row .wide { flex-basis: 100%; margin: 0; }
 .spinner { width: 36px; height: 36px; margin: .5rem auto 0; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 

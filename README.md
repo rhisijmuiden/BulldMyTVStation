@@ -12,7 +12,7 @@ An admin panel that sets up a complete TV station step by step and monitors each
 - Runs in a **Debian 13 LXC container** on Proxmox VE, or on a **minimal Debian 13** machine or VPS
 - Everything (code, UI, docs) in English; the web interface is also available in **Dutch**
 
-> **Status:** first concept. Login, the one-time admin password, the dashboard, step 1 of the wizard and monitoring of parts you add by hand work. Deploying the parts from the wizard is next.
+> **Status:** in development. Login, the one-time admin password, updates from the panel, monitoring of parts you add by hand and wizard steps 1 and 2 (location and the Proxmox connection) work. Choosing and deploying the parts is next.
 
 ## Install
 
@@ -53,7 +53,10 @@ Lost the password? Run `tvstation-admin-reset` as root on the machine (or in the
 ## Using the panel
 
 - **Dashboard**: the *Create My TV Station* button and the live status of every part.
-- **Create My TV Station**: a wizard. Step 1 asks where the station runs: on **one Proxmox server** (each part gets an LXC container) or on **separate machines** (each part on its own Debian 13 VPS or physical machine). Step 2 shows which parts will be deployed and whether their installer is ready.
+- **Create My TV Station**: a wizard in six steps (location, connection, parts, deploy, connect, overview). You can leave it and pick it up later, and go back to earlier steps.
+  1. **Location**: on **one Proxmox server** or on **separate machines** (each part on its own Debian 13 VPS or physical machine).
+  2. **Connection** (Proxmox): the panel shows its own SSH public key with the command to allow it on the node (`/root/.ssh/authorized_keys`). After *Connect* it shows the node, its Proxmox version and host key, and lets you choose LXC containers or Debian 13 virtual machines, the storage (only the ones that can hold that type), the network bridge and a **resource pool**. The pool is created when it does not exist yet, and every guest of the station goes into it.
+  3. **Parts**: which parts will be deployed and whether their installer is ready (LXC uses each project's Proxmox script, VMs and separate machines its Debian installer). Choosing resources per part is next.
 - **Components**: the parts this panel monitors. Add a part that already runs by its web interface address; the panel checks it every 30 seconds.
 - **Settings**: the default language and your password.
 - **Version button** (top right): shows the version and build (`v0.1.0 · <commit>`) and opens *Version and updates*, with the build date, the latest change and the branch. The panel checks for a new version once a day and on *Check now*; when there is one, a banner appears and **Update now** installs it. The panel restarts and the page reloads on its own. The log of the last update is shown below.

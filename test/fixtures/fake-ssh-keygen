@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Stands in for ssh-keygen in the tests.
+while getopts "qt:N:C:f:lF:" o; do case $o in f) file="$OPTARG" ;; l) list=1 ;; esac; done
+[[ -n "${list:-}" ]] && { echo "pve1 ED25519 SHA256:testfingerprint"; exit 0; }
+echo "private" >"$file"; echo "ssh-ed25519 AAAATEST build-my-tv-station" >"$file.pub"

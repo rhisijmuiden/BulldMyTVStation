@@ -12,6 +12,9 @@ process.env.TVS_INITIAL_PASSWORD = 'one-time-pass-123';
 // Stands in for the installed tvstation-update.path unit.
 const UNIT = path.join(DATA_DIR, 'tvstation-update.path');
 process.env.TVSTATION_UPDATE_UNIT = UNIT;
+process.env.TVS_SSH_BIN = path.join(__dirname, 'fixtures', 'fake-ssh');
+process.env.TVS_SSH_KEYGEN_BIN = path.join(__dirname, 'fixtures', 'fake-ssh-keygen');
+process.env.FAKE_PVE_POOLS = path.join(DATA_DIR, 'fake-pools');
 
 const auth = require('../server/auth');
 const app = require('../server/index');
@@ -87,6 +90,40 @@ test('wizard step 1 stores where the station runs', async () => {
   assert.strictEqual((await call('GET', '/api/station')).body.station.target, 'proxmox');
   const reset = await call('DELETE', '/api/station');
   assert.strictEqual(reset.body.station.target, null);
+});
+
+test('wizard step 2 connects to Proxmox and creates the resource pool', async () => {
+  await call('PUT', '/api/station', { target: 'proxmox' });
+  assert.match((await call('GET', '/api/proxmox/key')).body.publicKey, /^ssh-ed25519 /);
+
+  assert.strictEqual((await call('POST', '/api/proxmox/discover', { host: 'bad host;rm', port: 22 })).body.error, 'errors.proxmoxHost');
+  assert.strictEqual((await call('POST', '/api/proxmox/discover', { host: 'denied.example' })).body.error, 'errors.proxmoxDenied');
+
+  const found = (await call('POST', '/api/proxmox/discover', { host: '192.168.1.10' })).body.found;
+  assert.strictEqual(found.node, 'pve1');
+  assert.deepStrictEqual(found.bridges, ['vmbr0']);
+  assert.deepStrictEqual(found.pools, ['backups']);
+  assert.strictEqual(found.fingerprint, 'SHA256:testfingerprint');
+
+  const choice = { host: '192.168.1.10', port: 22, storage: 'local-lvm', bridge: 'vmbr0', pool: 'tv-station', guestType: 'lxc' };
+  assert.strictEqual((await call('PUT', '/api/station/proxmox', { ...choice, storage: 'local' })).body.error, 'errors.proxmoxStorage');
+  assert.strictEqual((await call('PUT', '/api/station/proxmox', { ...choice, storage: 'tank' })).body.error, 'errors.proxmoxStorage');
+  assert.strictEqual((await call('PUT', '/api/station/proxmox', { ...choice, bridge: 'vmbr9' })).body.error, 'errors.proxmoxBridge');
+  assert.strictEqual((await call('PUT', '/api/station/proxmox', { ...choice, pool: "x';reboot" })).body.error, 'errors.proxmoxPool');
+  assert.strictEqual((await call('PUT', '/api/station/proxmox', { ...choice, guestType: 'docker' })).body.error, 'errors.proxmoxGuestType');
+
+  const saved = await call('PUT', '/api/station/proxmox', choice);
+  assert.strictEqual(saved.status, 200);
+  assert.strictEqual(saved.body.poolCreated, true);
+  assert.strictEqual(saved.body.station.step, 3);
+  assert.strictEqual(saved.body.station.proxmox.node, 'pve1');
+  const vm = await call('PUT', '/api/station/proxmox', { ...choice, storage: 'tank', guestType: 'vm' });
+  assert.strictEqual(vm.body.poolCreated, false);
+  assert.deepStrictEqual(fs.readFileSync(process.env.FAKE_PVE_POOLS, 'utf8').trim().split('\n'), ['backups', 'tv-station']);
+
+  assert.strictEqual((await call('PUT', '/api/station', { step: 2 })).body.station.step, 2);
+  assert.strictEqual((await call('PUT', '/api/station', { step: 3 })).status, 400);
+  assert.strictEqual((await call('DELETE', '/api/station')).body.station.proxmox, null);
 });
 
 test('components are validated, checked and removable', async () => {

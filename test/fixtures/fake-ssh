@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Stands in for ssh in the tests: answers the scripts the panel sends as a Proxmox node would.
+script="$(cat)"
+POOLS="${FAKE_PVE_POOLS:?}"
+[[ -f "$POOLS" ]] || echo 'backups' >"$POOLS"
+if [[ "$*" == *"root@denied.example"* ]]; then echo "root@denied.example: Permission denied (publickey)." >&2; exit 255; fi
+if [[ "$script" == *"pvesh create /pools"* ]]; then
+  pool="$(grep -o "poolid '[^']*'" <<<"$script" | cut -d"'" -f2)"
+  if grep -qx "$pool" "$POOLS"; then echo existed; else echo "$pool" >>"$POOLS"; echo created; fi
+  exit 0
+fi
+pools="$(sed 's/.*/{"poolid":"&"}/' "$POOLS" | paste -sd, -)"
+cat <<OUT
+@@version
+pve-manager/9.0.10/deadbeef (running kernel: 6.14.11-2-pve)
+@@node
+pve1
+@@storage
+[{"storage":"local","type":"dir","content":"iso,vztmpl,backup","active":1,"enabled":1},{"storage":"local-lvm","type":"lvmthin","content":"rootdir,images","active":1,"enabled":1,"avail":400000000000},{"storage":"tank","type":"zfspool","content":"images","active":1,"enabled":1}]
+@@network
+[{"iface":"vmbr0","type":"bridge"}]
+@@pools
+[$pools]
+OUT
