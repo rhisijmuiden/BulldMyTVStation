@@ -6,7 +6,7 @@ An admin panel that sets up a complete TV station step by step and monitors each
 |---|---|---|
 | Channel generator | [Beeldkrant](https://github.com/rhisijmuiden/TV-Channel-Generator) | Builds the channel and sends it out as an RTMP or SRT stream |
 | Distribution server | [MediaMTX Panel](https://github.com/rhisijmuiden/Mediamtx-controlpanel) | Receives the stream and serves it to viewers (HLS, WebRTC, RTSP, SRT) |
-| IPTV portal | [IPTV Portal](https://github.com/rhisijmuiden/iptv-portal) | Lists the channels for TV boxes and IPTV apps (in development) |
+| IPTV portal | [IPTV Portal](https://github.com/rhisijmuiden/iptv-portal) | Lists the channels for TV boxes and IPTV apps |
 
 - Admin panel on port **8080**
 - Runs in a **Debian 13 LXC container** on Proxmox VE, or on a **minimal Debian 13** machine or VPS

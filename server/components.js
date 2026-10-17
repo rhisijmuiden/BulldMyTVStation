@@ -4,14 +4,14 @@
 // monitor a part that already runs somewhere.
 const store = require('./store');
 
-// What each kind of part is and where it comes from. `installer: false` means the project
-// has no installer yet, so the wizard cannot deploy it.
+// What each kind of part is and where it comes from: the Proxmox LXC script and the installer
+// for a Debian 13 machine or VM. `installer: false` means the wizard cannot deploy it yet.
 const CATALOG = {
   generator: {
     project: 'Beeldkrant',
     repo: 'https://github.com/rhisijmuiden/TV-Channel-Generator',
     proxmoxScript: 'https://raw.githubusercontent.com/rhisijmuiden/TV-Channel-Generator/main/ct/beeldkrant.sh',
-    debianScript: null,
+    debianScript: 'https://raw.githubusercontent.com/rhisijmuiden/TV-Channel-Generator/main/install/debian.sh',
     defaultPort: 8080,
     installer: true,
   },
@@ -26,10 +26,10 @@ const CATALOG = {
   portal: {
     project: 'IPTV Portal',
     repo: 'https://github.com/rhisijmuiden/iptv-portal',
-    proxmoxScript: null,
-    debianScript: null,
+    proxmoxScript: 'https://raw.githubusercontent.com/rhisijmuiden/iptv-portal/main/ct/iptv-portal.sh',
+    debianScript: 'https://raw.githubusercontent.com/rhisijmuiden/iptv-portal/main/install.sh',
     defaultPort: 8080,
-    installer: false,
+    installer: true,
   },
 };
 

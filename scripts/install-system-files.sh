@@ -1,4 +1,5 @@
 # Sourced by the installers and by update.sh: puts the systemd units and commands of the checkout
+# shellcheck shell=bash
 # in APP_DIR in place. `install` writes a new file, so replacing the running update command is safe.
 install_system_files() {
   local app_dir="$1"
