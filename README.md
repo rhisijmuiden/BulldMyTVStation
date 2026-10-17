@@ -30,7 +30,7 @@ The script uses the [community-scripts](https://github.com/community-scripts/Pro
 pct exec <CTID> -- cat /var/lib/tvstation/initial-admin-password
 ```
 
-Update later by running `update` in the container shell.
+Update later by running `update` in the container shell. It updates everything in one go: the code, its dependencies, the systemd units and the commands themselves, then restarts the panel.
 
 ### On a Debian 13 machine or VPS
 
@@ -40,7 +40,7 @@ Run this as root on a minimal Debian 13 installation:
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/rhisijmuiden/BulldMyTVStation/main/install/debian.sh)"
 ```
 
-Without curl, use `wget -qO-` instead of `curl -fsSL`. The installer uses Debian's own Node.js package, installs the panel in `/opt/tvstation` with its data in `/var/lib/tvstation`, and prints the admin address and the one-time password at the end. Update later with `tvstation-update`; running the installer again does the same.
+Without curl, use `wget -qO-` instead of `curl -fsSL`. The installer uses Debian's own Node.js package, installs the panel in `/opt/tvstation` with its data in `/var/lib/tvstation`, and prints the admin address and the one-time password at the end. Update later with `tvstation-update` (the same command as `update` in the container); running the installer again does the same.
 
 Settings: `PORT=<port>` changes the panel port, `TVSTATION_REF=<branch>` installs another branch.
 
@@ -56,6 +56,9 @@ Lost the password? Run `tvstation-admin-reset` as root on the machine (or in the
 - **Create My TV Station**: a wizard. Step 1 asks where the station runs: on **one Proxmox server** (each part gets an LXC container) or on **separate machines** (each part on its own Debian 13 VPS or physical machine). Step 2 shows which parts will be deployed and whether their installer is ready.
 - **Components**: the parts this panel monitors. Add a part that already runs by its web interface address; the panel checks it every 30 seconds.
 - **Settings**: the default language and your password.
+- **Version button** (top right): shows the version and build (`v0.1.0 · <commit>`) and opens *Version and updates*, with the build date, the latest change and the branch. The panel checks for a new version once a day and on *Check now*; when there is one, a banner appears and **Update now** installs it. The panel restarts and the page reloads on its own. The log of the last update is shown below.
+
+Updating from the panel runs the same `tvstation-update` command as root through the `tvstation-update.path` and `tvstation-update.service` systemd units, so the web server itself never needs root.
 
 Every user can pick English or Dutch in the language menu; the default for new users is set under Settings.
 
@@ -78,8 +81,8 @@ The first start prints the one-time admin password and stores it in `DATA_DIR/in
 | `ct/tvstation.sh` | Proxmox LXC script (community-scripts engine) |
 | `install/tvstation-install.sh` | Runs inside the new LXC container |
 | `install/debian.sh` | Standalone installer for Debian 13 |
-| `scripts/` | The `update` and `tvstation-admin-reset` commands |
-| `deploy/tvstation.service` | systemd unit |
+| `scripts/` | The `update` / `tvstation-update` and `tvstation-admin-reset` commands |
+| `deploy/` | systemd units for the panel and for updates started from the panel |
 
 ## License
 

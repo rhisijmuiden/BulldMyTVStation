@@ -9,6 +9,9 @@ const path = require('path');
 const DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'tvstation-test-'));
 process.env.DATA_DIR = DATA_DIR;
 process.env.TVS_INITIAL_PASSWORD = 'one-time-pass-123';
+// Stands in for the installed tvstation-update.path unit.
+const UNIT = path.join(DATA_DIR, 'tvstation-update.path');
+process.env.TVSTATION_UPDATE_UNIT = UNIT;
 
 const auth = require('../server/auth');
 const app = require('../server/index');
@@ -101,6 +104,26 @@ test('language can be set per user and as default', async () => {
   assert.strictEqual((await call('PUT', '/api/me/language', { language: 'nl' })).body.user.language, 'nl');
   assert.strictEqual((await call('PUT', '/api/settings', { language: 'de' })).status, 400);
   assert.strictEqual((await call('PUT', '/api/settings', { language: 'nl' })).body.language, 'nl');
+});
+
+test('info shows the version and build', async () => {
+  const r = await call('GET', '/api/info');
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.body.version, require('../package.json').version);
+  assert.match(r.body.build.commit, /^[0-9a-f]{40}$/);
+  assert.strictEqual(r.body.canUpdate, false);
+});
+
+test('an update can only be requested on an installed machine', async () => {
+  const refused = await call('POST', '/api/info/update', {});
+  assert.strictEqual(refused.status, 409);
+  assert.strictEqual(refused.body.error, 'errors.updateNotInstalled');
+
+  fs.writeFileSync(UNIT, '');
+  const r = await call('POST', '/api/info/update', { force: true });
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.body.requested, true);
+  assert.strictEqual(fs.readFileSync(path.join(DATA_DIR, 'update-request'), 'utf8').trim(), 'force');
 });
 
 test('logout ends the session', async () => {

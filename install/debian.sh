@@ -61,10 +61,8 @@ info "Creating service"
   [[ "$PORT" != "8080" ]] && echo "PORT=$PORT"
   true
 } >/etc/default/tvstation
-install -m 0644 "$APP_DIR/deploy/tvstation.service" /etc/systemd/system/tvstation.service
-install -m 0755 "$APP_DIR/scripts/update.sh" /usr/bin/tvstation-update
-install -m 0755 "$APP_DIR/scripts/tvstation-admin-reset.sh" /usr/bin/tvstation-admin-reset
-systemctl daemon-reload
+source "$APP_DIR/scripts/install-system-files.sh"
+install_system_files "$APP_DIR"
 systemctl enable --quiet --now tvstation
 ok "Started service"
 

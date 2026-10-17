@@ -76,15 +76,25 @@ const PAGES = [
   ['settings', 'nav.settings'],
 ];
 
+const shortCommit = (c) => (c ? c.slice(0, 7) : '');
+const buildLabel = (info) => `v${info.version}${info.build.commit ? ` · ${shortCommit(info.build.commit)}` : ''}`;
+
 function shell(page, content) {
+  const info = state.info;
+  const banner = info && info.available && page !== 'info'
+    ? `<a class="banner" href="#/info">${esc(t('info.availableBanner'))}</a>` : '';
   root.innerHTML = `
     <header class="top">
       <div class="brand">${esc(t('app.name'))}</div>
       <nav>${PAGES.map(([p, k]) => `<a href="#/${p}" class="${p === page ? 'active' : ''}">${esc(t(k))}</a>`).join('')}</nav>
-      <div class="user">${languageSelect()}<span class="who">${esc(state.me.username)}</span><button id="logout" class="link">${esc(t('nav.logout'))}</button></div>
+      <div class="user">
+        <a href="#/info" class="button info-button ${page === 'info' ? 'active' : ''} ${info && info.available ? 'has-update' : ''}" title="${esc(t('info.title'))}">${esc(info ? buildLabel(info) : `v${state.app.version}`)}</a>
+        ${languageSelect()}<span class="who">${esc(state.me.username)}</span><button id="logout" class="link">${esc(t('nav.logout'))}</button>
+      </div>
     </header>
+    ${banner}
     <main>${content}</main>
-    <footer>${esc(t('app.name'))} ${esc(state.app.version)}</footer>`;
+    <footer>${esc(t('app.name'))} ${esc(info ? buildLabel(info) : state.app.version)}</footer>`;
   bindLanguageSelect();
   document.getElementById('logout').onclick = async () => { await api('POST', '/api/logout'); state.me = null; location.hash = ''; route(); };
 }
@@ -275,6 +285,86 @@ async function renderComponents(editId) {
   };
 }
 
+function formatDateTime(iso) {
+  return iso ? new Date(iso).toLocaleString(state.language === 'nl' ? 'nl-NL' : 'en-GB') : '';
+}
+
+let updatePoll = null;
+async function renderInfo() {
+  const info = state.info = await api('GET', '/api/info');
+  const updating = info.requested;
+  shell('info', `
+    <h1>${esc(t('info.title'))}</h1>
+    <div class="card">
+      <dl class="facts">
+        <dt>${esc(t('info.version'))}</dt><dd>${esc(info.version)}</dd>
+        <dt>${esc(t('info.build'))}</dt><dd>${info.build.commit ? `<code>${esc(shortCommit(info.build.commit))}</code> · ${esc(formatDateTime(info.build.date))}` : esc(t('info.noBuild'))}</dd>
+        ${info.build.subject ? `<dt>${esc(t('info.change'))}</dt><dd>${esc(info.build.subject)}</dd>` : ''}
+        <dt>${esc(t('info.branch'))}</dt><dd>${esc(info.branch)}</dd>
+        <dt>${esc(t('info.lastCheck'))}</dt><dd>${info.checkedAt ? esc(formatDateTime(info.checkedAt)) : esc(t('info.never'))}</dd>
+      </dl>
+      ${info.error ? `<p class="error">${esc(t(info.error, { branch: info.branch }))}</p>` : ''}
+      ${updating ? `<p class="notice">${esc(t('info.updating'))}</p>`
+        : info.available ? `<p class="notice">${esc(t('info.available', { commit: shortCommit(info.latest) }))}</p>`
+        : info.checkedAt && !info.error ? `<p class="ok">${esc(t('info.upToDate'))}</p>` : ''}
+      ${!info.canUpdate ? `<p class="hint">${esc(t('info.notInstalled'))}</p>` : ''}
+      <p class="error" id="info-error" hidden></p>
+      <div class="actions">
+        <button id="check" ${updating ? 'disabled' : ''}>${esc(t('info.checkNow'))}</button>
+        ${info.canUpdate && !info.available ? `<button id="reinstall" ${updating ? 'disabled' : ''}>${esc(t('info.reinstall'))}</button>` : ''}
+        ${info.canUpdate && info.available ? `<button id="update" class="primary" ${updating ? 'disabled' : ''}>${esc(t('info.updateNow'))}</button>` : ''}
+      </div>
+    </div>
+    ${info.log ? `<h2>${esc(t('info.log'))}</h2><pre class="log">${esc(info.log)}</pre>` : ''}`);
+
+  const fail = (err) => { const e = document.getElementById('info-error'); e.textContent = err.message; e.hidden = false; };
+  document.getElementById('check').onclick = async (e) => {
+    e.target.disabled = true;
+    try { state.info = await api('POST', '/api/info/check'); renderInfo(); } catch (err) { fail(err); e.target.disabled = false; }
+  };
+  const start = async (force) => {
+    if (force && !confirm(t('info.confirmReinstall'))) return;
+    try { await api('POST', '/api/info/update', { force }); waitForUpdate(info.build.commit); } catch (err) { fail(err); }
+  };
+  const update = document.getElementById('update');
+  if (update) update.onclick = () => start(false);
+  const reinstall = document.getElementById('reinstall');
+  if (reinstall) reinstall.onclick = () => start(true);
+  if (updating && !updatePoll) waitForUpdate(info.build.commit);
+}
+
+// While the update runs the panel restarts: poll until it answers again, then reload the page
+// so the browser runs the new version too.
+function waitForUpdate(fromCommit) {
+  clearInterval(updatePoll);
+  let wentAway = false;
+  const startedAt = new Date().toISOString();
+  renderUpdating();
+  updatePoll = setInterval(async () => {
+    try {
+      const res = await fetch('/api/info');
+      if (!res.ok) return;
+      const info = await res.json();
+      if (!info.requested && (wentAway || info.build.commit !== fromCommit)) {
+        clearInterval(updatePoll);
+        updatePoll = null;
+        location.hash = '#/info';
+        location.reload();
+      } else if (!info.requested && info.logFinished && info.logAt > startedAt) {
+        // The update finished without a restart (already up to date, or it failed): show the log.
+        clearInterval(updatePoll);
+        updatePoll = null;
+        renderInfo();
+      }
+    } catch { wentAway = true; }
+  }, 2000);
+}
+
+function renderUpdating() {
+  const main = root.querySelector('main');
+  if (main) main.innerHTML = `<div class="card center-text"><div class="spinner"></div><h2>${esc(t('info.updatingTitle'))}</h2><p>${esc(t('info.updating'))}</p></div>`;
+}
+
 async function renderSettings() {
   const settings = await api('GET', '/api/settings');
   renderPassword(false);
@@ -307,11 +397,13 @@ async function route() {
   clearInterval(refresh);
   if (!state.me) return renderLogin();
   if (state.me.mustChangePassword) return renderPassword(true);
+  if (!state.info) state.info = await api('GET', '/api/info').catch(() => null);
   const page = (location.hash.replace(/^#\/?/, '') || 'dashboard').split('/')[0];
   try {
     if (page === 'wizard') await renderWizard();
     else if (page === 'components') await renderComponents();
     else if (page === 'settings') await renderSettings();
+    else if (page === 'info') await renderInfo();
     else {
       await renderDashboard();
       refresh = setInterval(() => { if (!document.hidden) renderDashboard().catch(() => {}); }, 15000);

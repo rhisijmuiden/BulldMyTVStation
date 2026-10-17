@@ -6,16 +6,13 @@
   "nav.settings": "Settings",
   "nav.logout": "Log out",
   "nav.language": "Language",
-
   "language.en": "English",
   "language.nl": "Nederlands",
   "language.default": "Default ({language})",
-
   "login.title": "Log in",
   "login.username": "User name",
   "login.password": "Password",
   "login.submit": "Log in",
-
   "password.title": "Change your password",
   "password.forced": "You logged in with a one-time password. Choose your own password to continue.",
   "password.current": "Current password",
@@ -25,7 +22,6 @@
   "password.submit": "Change password",
   "password.mismatch": "The two new passwords are not the same.",
   "password.changed": "Your password has been changed.",
-
   "dashboard.title": "Dashboard",
   "dashboard.intro": "Set up a complete TV station step by step, and keep an eye on each of its parts.",
   "dashboard.create": "Create My TV Station",
@@ -33,20 +29,17 @@
   "dashboard.parts": "Parts of your station",
   "dashboard.noParts": "No parts yet. Start with Create My TV Station, or add a part that already runs under Components.",
   "dashboard.summary": "{up} of {total} parts are up",
-
   "role.generator": "Channel generator",
   "role.distribution": "Distribution server",
   "role.portal": "IPTV portal",
   "role.generator.about": "Builds the channel and sends it out as an RTMP or SRT stream.",
   "role.distribution.about": "Receives the stream and serves it to viewers over HLS, WebRTC, RTSP and SRT.",
   "role.portal.about": "Lists the channels for TV boxes and IPTV apps.",
-
   "status.up": "Up",
   "status.down": "Down",
   "status.unknown": "Not checked yet",
   "status.checked": "Checked {time}",
   "status.latency": "{ms} ms",
-
   "wizard.title": "Create My TV Station",
   "wizard.step": "Step {n} of {total}",
   "wizard.step1.title": "Where should the station run?",
@@ -65,7 +58,6 @@
   "wizard.noInstaller": "No installer yet",
   "wizard.installer": "Installer ready",
   "wizard.source": "Source",
-
   "components.title": "Components",
   "components.intro": "Every part of the station that this panel monitors. The panel checks each one every 30 seconds.",
   "components.add": "Add a component",
@@ -81,13 +73,11 @@
   "components.checkNow": "Check now",
   "components.none": "No components yet.",
   "components.open": "Open",
-
   "settings.title": "Settings",
   "settings.language": "Default language",
   "settings.languageHint": "The language for users who have not picked one themselves.",
   "settings.save": "Save",
   "settings.saved": "Settings saved.",
-
   "errors.invalidLogin": "Wrong user name or password.",
   "errors.tooManyAttempts": "Too many attempts. Try again in {seconds} seconds.",
   "errors.notLoggedIn": "Your session has ended. Log in again.",
@@ -104,5 +94,27 @@
   "errors.jsonOnly": "The request was not sent as JSON.",
   "errors.badRequest": "The request could not be read.",
   "errors.server": "Something went wrong on the server.",
-  "errors.network": "The panel cannot be reached."
+  "errors.network": "The panel cannot be reached.",
+  "info.title": "Version and updates",
+  "info.version": "Version",
+  "info.build": "Build",
+  "info.change": "Latest change",
+  "info.branch": "Branch",
+  "info.lastCheck": "Last update check",
+  "info.never": "Not yet",
+  "info.noBuild": "Unknown (not installed from git)",
+  "info.checkNow": "Check now",
+  "info.updateNow": "Update now",
+  "info.reinstall": "Reinstall",
+  "info.confirmReinstall": "Reinstall the current version? The panel restarts and is unavailable for a moment.",
+  "info.available": "A new version is available ({commit}).",
+  "info.availableBanner": "A new version of Build My TV Station is available. Open Version and updates to install it.",
+  "info.upToDate": "You run the latest version.",
+  "info.notInstalled": "Updating from the panel works on a machine or container set up with the installer. Here, run tvstation-update as root instead.",
+  "info.updatingTitle": "Updating",
+  "info.updating": "The update is running. The panel restarts and this page reloads on its own when it is back.",
+  "info.log": "Log of the last update",
+  "errors.updateBranch": "The branch {branch} was not found in the repository.",
+  "errors.updateUnreachable": "The repository could not be reached to check for updates.",
+  "errors.updateNotInstalled": "Updating from the panel needs the update service from the installer."
 }

@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Updates Build My TV Station to the latest version. Installed as /usr/bin/update in the LXC container
-# and as /usr/bin/tvstation-update on a standalone machine.
+# Updates Build My TV Station to the latest version: the code, its dependencies, the systemd units
+# and these commands, then restarts the panel. Installed as /usr/bin/tvstation-update, and in the
+# LXC container also as /usr/bin/update, so running `update` in the container shell is all it takes.
 #
-#   update            update to the latest version of the configured branch
-#   update --force    reinstall even when already up to date
+#   update                  update to the latest version of the configured branch
+#   update --force          reinstall even when already up to date
+#   update --request FILE   do what the admin panel asked for in FILE (used by tvstation-update.service)
 set -euo pipefail
 
 APP_DIR="${TVSTATION_DIR:-/opt/tvstation}"
@@ -11,7 +13,15 @@ APP_DIR="${TVSTATION_DIR:-/opt/tvstation}"
 REF="${TVSTATION_REF:-main}"
 SERVICE="tvstation"
 FORCE=0
-[[ "${1:-}" == "--force" ]] && FORCE=1
+case "${1:-}" in
+  --force) FORCE=1 ;;
+  --request)
+    # The panel writes "force" to reinstall the current version; anything else means update.
+    REQUEST="$(cat "${2:-}" 2>/dev/null || true)"
+    rm -f "${2:-}"
+    [[ "$REQUEST" == force* ]] && FORCE=1
+    ;;
+esac
 
 if [[ -t 1 ]]; then GN=$'\e[32m'; YW=$'\e[33m'; RD=$'\e[31m'; CL=$'\e[0m'; else GN=''; YW=''; RD=''; CL=''; fi
 info() { echo -e "${YW}▶${CL} $*"; }
@@ -38,19 +48,15 @@ fi
 
 info "Stopping Build My TV Station"
 systemctl stop "$SERVICE" || true
+# Whatever happens from here, never leave the panel stopped.
+trap 'systemctl is-active --quiet "$SERVICE" || systemctl start "$SERVICE" || true' EXIT
 
 info "Installing ${LATEST:0:7}"
 git_ reset --quiet --hard FETCH_HEAD
-(cd "$APP_DIR" && npm ci --omit=dev --no-audit --no-fund --loglevel=error) || {
-  systemctl start "$SERVICE" || true
-  die "Installing dependencies failed; the panel was restarted with the files it has now."
-}
+(cd "$APP_DIR" && npm ci --omit=dev --no-audit --no-fund --loglevel=error --silent) || die "Installing dependencies failed; the panel was restarted with the files it has now."
 chown -R "$SERVICE:$SERVICE" "$APP_DIR"
-install -m 0644 "$APP_DIR/deploy/tvstation.service" /etc/systemd/system/tvstation.service
-install -m 0755 "$APP_DIR/scripts/tvstation-admin-reset.sh" /usr/bin/tvstation-admin-reset
-# Keep this command current under the name it was started with.
-install -m 0755 "$APP_DIR/scripts/update.sh" "$(readlink -f "$0")"
-systemctl daemon-reload
+source "$APP_DIR/scripts/install-system-files.sh"
+install_system_files "$APP_DIR"
 
 info "Starting Build My TV Station"
 systemctl start "$SERVICE"

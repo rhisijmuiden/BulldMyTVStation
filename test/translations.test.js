@@ -21,7 +21,7 @@ for (const file of fs.readdirSync(dir).filter((f) => f !== 'en.json')) {
 
 test('every t() key used in the frontend exists', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8') + fs.readFileSync(path.join(__dirname, '..', 'server', 'index.js'), 'utf8') + fs.readFileSync(path.join(__dirname, '..', 'server', 'auth.js'), 'utf8') + fs.readFileSync(path.join(__dirname, '..', 'server', 'components.js'), 'utf8');
-  const keys = [...src.matchAll(/['"`]((?:errors|nav|login|password|dashboard|wizard|components|settings|status|language|app)\.[\w.]+)['"`]/g)].map((m) => m[1]);
+  const keys = [...src.matchAll(/['"`]((?:errors|nav|login|password|dashboard|wizard|components|settings|status|language|app|info)\.[\w.]+)['"`]/g)].map((m) => m[1]);
   const missing = [...new Set(keys)].filter((k) => !(k in en));
   assert.deepStrictEqual(missing, []);
 });

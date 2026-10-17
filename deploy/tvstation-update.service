@@ -1,0 +1,7 @@
+# Runs the same update command as the shell, as root, on request of the admin panel.
+[Unit]
+Description=Update Build My TV Station
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c '/usr/bin/tvstation-update --request /var/lib/tvstation/update-request > /var/lib/tvstation/update.log 2>&1'

@@ -6,16 +6,13 @@
   "nav.settings": "Instellingen",
   "nav.logout": "Uitloggen",
   "nav.language": "Taal",
-
   "language.en": "English",
   "language.nl": "Nederlands",
   "language.default": "Standaard ({language})",
-
   "login.title": "Inloggen",
   "login.username": "Gebruikersnaam",
   "login.password": "Wachtwoord",
   "login.submit": "Inloggen",
-
   "password.title": "Wijzig je wachtwoord",
   "password.forced": "Je bent ingelogd met een eenmalig wachtwoord. Kies een eigen wachtwoord om verder te gaan.",
   "password.current": "Huidig wachtwoord",
@@ -25,7 +22,6 @@
   "password.submit": "Wachtwoord wijzigen",
   "password.mismatch": "De twee nieuwe wachtwoorden zijn niet gelijk.",
   "password.changed": "Je wachtwoord is gewijzigd.",
-
   "dashboard.title": "Dashboard",
   "dashboard.intro": "Zet stap voor stap een compleet tv-station op en houd elk onderdeel in de gaten.",
   "dashboard.create": "Create My TV Station",
@@ -33,20 +29,17 @@
   "dashboard.parts": "Onderdelen van je station",
   "dashboard.noParts": "Nog geen onderdelen. Begin met Create My TV Station, of voeg onder Onderdelen een onderdeel toe dat al draait.",
   "dashboard.summary": "{up} van {total} onderdelen zijn bereikbaar",
-
   "role.generator": "Kanaalgenerator",
   "role.distribution": "Distributieserver",
   "role.portal": "IPTV-portal",
   "role.generator.about": "Maakt het kanaal en verstuurt het als RTMP- of SRT-stream.",
   "role.distribution.about": "Ontvangt de stream en levert hem aan kijkers via HLS, WebRTC, RTSP en SRT.",
   "role.portal.about": "Zet de kanalen klaar voor tv-boxen en IPTV-apps.",
-
   "status.up": "Bereikbaar",
   "status.down": "Onbereikbaar",
   "status.unknown": "Nog niet gecontroleerd",
   "status.checked": "Gecontroleerd {time}",
   "status.latency": "{ms} ms",
-
   "wizard.title": "Create My TV Station",
   "wizard.step": "Stap {n} van {total}",
   "wizard.step1.title": "Waar moet het station draaien?",
@@ -65,7 +58,6 @@
   "wizard.noInstaller": "Nog geen installer",
   "wizard.installer": "Installer klaar",
   "wizard.source": "Broncode",
-
   "components.title": "Onderdelen",
   "components.intro": "Alle onderdelen van het station die dit panel monitort. Het panel controleert ze elke 30 seconden.",
   "components.add": "Onderdeel toevoegen",
@@ -81,13 +73,11 @@
   "components.checkNow": "Nu controleren",
   "components.none": "Nog geen onderdelen.",
   "components.open": "Openen",
-
   "settings.title": "Instellingen",
   "settings.language": "Standaardtaal",
   "settings.languageHint": "De taal voor gebruikers die zelf geen taal gekozen hebben.",
   "settings.save": "Opslaan",
   "settings.saved": "Instellingen opgeslagen.",
-
   "errors.invalidLogin": "Verkeerde gebruikersnaam of wachtwoord.",
   "errors.tooManyAttempts": "Te veel pogingen. Probeer het over {seconds} seconden opnieuw.",
   "errors.notLoggedIn": "Je sessie is verlopen. Log opnieuw in.",
@@ -104,5 +94,27 @@
   "errors.jsonOnly": "Het verzoek is niet als JSON verstuurd.",
   "errors.badRequest": "Het verzoek kon niet gelezen worden.",
   "errors.server": "Er ging iets mis op de server.",
-  "errors.network": "Het panel is niet bereikbaar."
+  "errors.network": "Het panel is niet bereikbaar.",
+  "info.title": "Versie en updates",
+  "info.version": "Versie",
+  "info.build": "Build",
+  "info.change": "Laatste wijziging",
+  "info.branch": "Branch",
+  "info.lastCheck": "Laatste updatecontrole",
+  "info.never": "Nog niet",
+  "info.noBuild": "Onbekend (niet via git geïnstalleerd)",
+  "info.checkNow": "Nu controleren",
+  "info.updateNow": "Nu updaten",
+  "info.reinstall": "Opnieuw installeren",
+  "info.confirmReinstall": "De huidige versie opnieuw installeren? Het panel herstart en is even niet bereikbaar.",
+  "info.available": "Er is een nieuwe versie beschikbaar ({commit}).",
+  "info.availableBanner": "Er is een nieuwe versie van Build My TV Station. Open Versie en updates om hem te installeren.",
+  "info.upToDate": "Je draait de nieuwste versie.",
+  "info.notInstalled": "Updaten vanuit het panel werkt op een machine of container die met de installer is opgezet. Draai hier als root tvstation-update.",
+  "info.updatingTitle": "Bezig met updaten",
+  "info.updating": "De update loopt. Het panel herstart en deze pagina laadt vanzelf opnieuw zodra het terug is.",
+  "info.log": "Log van de laatste update",
+  "errors.updateBranch": "De branch {branch} is niet gevonden in de repository.",
+  "errors.updateUnreachable": "De repository is niet bereikbaar om op updates te controleren.",
+  "errors.updateNotInstalled": "Updaten vanuit het panel heeft de updateservice van de installer nodig."
 }

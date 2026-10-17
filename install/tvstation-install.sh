@@ -34,16 +34,15 @@ msg_ok "Installed Build My TV Station"
 
 msg_info "Creating Service"
 [[ "$TVSTATION_REF" != "main" ]] && echo "TVSTATION_REF=$TVSTATION_REF" >/etc/default/tvstation
-install -m 0644 /opt/tvstation/deploy/tvstation.service /etc/systemd/system/tvstation.service
-install -m 0755 /opt/tvstation/scripts/tvstation-admin-reset.sh /usr/bin/tvstation-admin-reset
-systemctl daemon-reload
+source /opt/tvstation/scripts/install-system-files.sh
+install_system_files /opt/tvstation
 systemctl enable -q --now tvstation
 msg_ok "Created Service"
 
 motd_ssh
 customize
 
-# Our own `update` command (replaces the generic one customize() writes).
+# Our own `update` command (replaces the generic one customize() writes): updates everything in place.
 install -m 0755 /opt/tvstation/scripts/update.sh /usr/bin/update
 
 cleanup_lxc

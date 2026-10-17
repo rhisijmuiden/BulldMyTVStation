@@ -5,6 +5,7 @@ const express = require('express');
 const store = require('./store');
 const auth = require('./auth');
 const components = require('./components');
+const updater = require('./updater');
 const pkg = require('../package.json');
 
 const PORT = Number(process.env.PORT) || 8080;
@@ -144,6 +145,20 @@ app.post('/api/components/check', auth.requireAuth, wrap(async (req, res) => {
   res.json({ components: store.list('components').map(components.withStatus) });
 }));
 
+// ---------- version and updates ----------
+app.get('/api/info', auth.requireAuth, wrap(async (req, res) => {
+  res.json(await updater.status());
+}));
+
+app.post('/api/info/check', auth.requireAuth, wrap(async (req, res) => {
+  res.json(await updater.check());
+}));
+
+app.post('/api/info/update', auth.requireAuth, wrap(async (req, res) => {
+  if (!updater.requestUpdate({ force: !!(req.body || {}).force })) return res.status(409).json({ error: 'errors.updateNotInstalled' });
+  res.json(await updater.status());
+}));
+
 // ---------- static ----------
 app.use('/api', (req, res) => res.status(404).json({ error: 'errors.notFound' }));
 app.use(express.static(PUBLIC, { index: 'index.html' }));
@@ -164,6 +179,7 @@ if (require.main === module) {
   }
   auth.bootstrap();
   components.startMonitor();
+  updater.start();
   app.listen(PORT, HOST, () => console.log(`Build My TV Station ${pkg.version} listening on http://${HOST}:${PORT}`));
 }
 
