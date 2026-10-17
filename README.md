@@ -119,6 +119,7 @@ The first start prints the one-time admin password and stores it in `DATA_DIR/in
 | `install/debian.sh` | Standalone installer for Debian 13 |
 | `scripts/` | The `update` / `tvstation-update` and `tvstation-admin-reset` commands |
 | `deploy/` | systemd units for the panel and for updates started from the panel |
+| `docs/station-contract.md` | The optional hooks the other projects offer so the panel can deploy and connect them |
 | `docs/screenshots/` | The screenshots in this README |
 
 ## License
