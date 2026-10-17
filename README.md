@@ -33,7 +33,7 @@ Each project stays a standalone project with its own installer: the panel uses t
 - Runs in a **Debian 13 LXC container** on Proxmox VE, or on a **minimal Debian 13** machine or VPS
 - Everything (code, UI, docs) in English; the web interface is also available in **Dutch**
 
-> **Status:** in development. Login, the one-time admin password, updates from the panel, monitoring of parts you add by hand and wizard steps 1 to 3 (location, the Proxmox connection and choosing the parts) work. Deploying the parts is next.
+> **Status:** in development. Login, the one-time admin password, updates from the panel, monitoring of parts you add by hand and wizard steps 1 to 3 (location, the Proxmox connection and choosing the parts) work. Deploying the parts is next; see the [roadmap](ROADMAP.md) for what follows.
 
 ## Screenshots
 
@@ -119,6 +119,7 @@ The first start prints the one-time admin password and stores it in `DATA_DIR/in
 | `install/debian.sh` | Standalone installer for Debian 13 |
 | `scripts/` | The `update` / `tvstation-update` and `tvstation-admin-reset` commands |
 | `deploy/` | systemd units for the panel and for updates started from the panel |
+| `ROADMAP.md` | Where the project is going, milestone by milestone |
 | `docs/station-contract.md` | The optional hooks the other projects offer so the panel can deploy and connect them |
 | `docs/screenshots/` | The screenshots in this README |
 
