@@ -1,0 +1,18 @@
+{
+  "name": "tvstation",
+  "version": "0.1.0",
+  "description": "Admin panel that sets up and monitors a complete TV station: channel generator, distribution server and IPTV portal",
+  "main": "server/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

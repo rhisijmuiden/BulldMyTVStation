@@ -1,0 +1,25 @@
+[Unit]
+Description=Build My TV Station admin panel
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tvstation
+Group=tvstation
+WorkingDirectory=/opt/tvstation
+Environment=NODE_ENV=production
+Environment=PORT=8080
+Environment=DATA_DIR=/var/lib/tvstation
+EnvironmentFile=-/etc/default/tvstation
+ExecStart=/usr/bin/node /opt/tvstation/server/index.js
+Restart=always
+RestartSec=5
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/tvstation
+
+[Install]
+WantedBy=multi-user.target
