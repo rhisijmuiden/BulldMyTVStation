@@ -25,7 +25,7 @@ async function api(method, url, body) {
   if (!res.ok) {
     if (res.status === 401 && url !== '/api/login') { state.me = null; route(); }
     if (res.status === 403 && data.error === 'errors.mustChangePassword') { state.me.mustChangePassword = true; route(); }
-    throw Object.assign(new Error(t(data.error || 'errors.server', data)), { key: data.error, status: res.status });
+    throw Object.assign(new Error(t(data.error || 'errors.server', data)), { key: data.error, status: res.status, field: data.field, index: data.index });
   }
   return data;
 }
@@ -220,11 +220,12 @@ function formatBytes(n) {
 }
 
 async function renderWizard() {
-  const { station, catalog } = await api('GET', '/api/station');
-  const step = station.target ? Math.min(station.step || 2, 3) : 1;
+  const { station, catalog, defaults, vmMin } = await api('GET', '/api/station');
+  const step = station.target ? Math.min(station.step || 2, 4) : 1;
   if (step === 1) return renderTargetStep(station);
   if (step === 2) return station.target === 'proxmox' ? renderProxmoxStep(station) : renderMachinesStep();
-  return renderPartsStep(station, catalog);
+  if (step === 3) return renderPartsStep(station, catalog, defaults, vmMin);
+  return renderDeployStep();
 }
 
 function renderTargetStep(station) {
@@ -353,37 +354,156 @@ function renderProxmoxChoices(target, found, saved) {
   };
 }
 
-function renderPartsStep(station, catalog) {
+function renderPartsStep(station, catalog, defaults, vmMin) {
   const px = station.proxmox;
-  const viaScript = station.target === 'proxmox' && px && px.guestType === 'lxc';
+  const guestType = station.target === 'proxmox' && px ? px.guestType : 'vm';
+  const viaScript = guestType === 'lxc';
+  const draft = station.parts.map((p) => ({ ...p }));
+  const proxy = { ...station.proxy };
+
   const summary = px ? `
     <dl class="facts">
       <dt>${esc(t('wizard.proxmox.node'))}</dt><dd>${esc(px.node)} (${esc(px.host)})</dd>
       <dt>${esc(t('wizard.proxmox.guestTitle'))}</dt><dd>${esc(t(`wizard.guest.${px.guestType}`))}</dd>
-      <dt>${esc(t('wizard.proxmox.storage'))}</dt><dd>${esc(px.storage)}</dd>
-      <dt>${esc(t('wizard.proxmox.bridge'))}</dt><dd>${esc(px.bridge)}</dd>
-      <dt>${esc(t('wizard.proxmox.pool'))}</dt><dd>${esc(px.pool)}</dd>
+      <dt>${esc(t('wizard.proxmox.storage'))}</dt><dd>${esc(px.storage)} · ${esc(px.bridge)} · ${esc(t('wizard.proxmox.pool'))} ${esc(px.pool)}</dd>
     </dl>` : '';
-  wizardShell(3, `
-    <h2>${esc(t('wizard.parts.title'))}</h2>
-    ${summary}
-    <div class="grid">${Object.entries(catalog).map(([type, c]) => {
-      const ready = c.installer && (viaScript ? c.proxmoxScript : c.debianScript);
-      return `<div class="card part">
-        <div class="part-head"><strong>${esc(t(`role.${type}`))}</strong><span class="badge ${ready ? 'up' : 'unknown'}">${esc(t(ready ? 'wizard.installer' : 'wizard.noInstaller'))}</span></div>
-        <div>${esc(c.project)}</div>
-        <p class="hint">${esc(t(`role.${type}.about`))}</p>
-        <a href="${esc(c.repo)}" target="_blank" rel="noopener">${esc(t('wizard.source'))}</a>
-      </div>`;
-    }).join('')}</div>
-    <p class="notice">${esc(t('wizard.parts.pending'))}</p>
-    <div class="actions">${backButton()}<button id="restart">${esc(t('wizard.restart'))}</button></div>`);
-  bindBack(3);
-  document.getElementById('restart').onclick = async () => {
-    if (!confirm(t('wizard.confirmRestart'))) return;
-    await api('DELETE', '/api/station');
-    renderWizard();
-  };
+
+  const field = (i, name, label, value, attrs = '') => `<label>${esc(label)}<input name="${name}" data-i="${i}" value="${esc(value ?? '')}" ${attrs}></label>`;
+  const url = (p) => (proxy.domain ? `${proxy.tls ? 'https' : 'http'}://${proxy.domain}${p.path === '/' ? '/' : `${p.path}/`}` : '');
+  const blank = { network: 'dhcp', ip: '', gateway: '', auth: false, authUser: 'admin' };
+
+  function partCard(p, i) {
+    const c = catalog[p.type];
+    const ready = c.installer && (viaScript ? c.proxmoxScript : (c.debianScript || c.builtIn));
+    const canRemove = p.type === 'generator' ? draft.filter((x) => x.type === 'generator').length > 1 : p.type !== 'proxy';
+    return `<div class="card part-edit" data-index="${i}">
+      <div class="part-head">
+        <strong>${esc(t(`role.${p.type}`))} · ${esc(c.project)}</strong>
+        <span class="badge ${ready ? 'up' : 'unknown'}">${esc(t(ready ? 'wizard.installer' : 'wizard.noInstaller'))}</span>
+      </div>
+      <p class="hint">${esc(t(`role.${p.type}.about`))}</p>
+      <div class="fields">
+        ${field(i, 'name', t('wizard.parts.name'), p.name, 'maxlength="60" required')}
+        ${field(i, 'hostname', t('wizard.parts.hostname'), p.hostname, 'maxlength="63" required')}
+        ${field(i, 'cpu', t('wizard.parts.cpu'), p.cpu, 'type="number" min="1" max="64" required')}
+        ${field(i, 'ram', t('wizard.parts.ram'), p.ram, `type="number" min="${guestType === 'vm' ? vmMin.ram : 256}" step="256" required`)}
+        ${field(i, 'disk', t('wizard.parts.disk'), p.disk, `type="number" min="${guestType === 'vm' ? vmMin.disk : 1}" required`)}
+        <label>${esc(t('wizard.parts.network'))}<select name="network" data-i="${i}">
+          <option value="dhcp" ${p.network !== 'static' ? 'selected' : ''}>DHCP</option>
+          <option value="static" ${p.network === 'static' ? 'selected' : ''}>${esc(t('wizard.parts.static'))}</option>
+        </select></label>
+        ${p.network === 'static' ? `${field(i, 'ip', t('wizard.parts.ip'), p.ip, 'placeholder="192.168.1.50/24" required')}${field(i, 'gateway', t('wizard.parts.gateway'), p.gateway, 'placeholder="192.168.1.1" required')}` : ''}
+        ${p.type !== 'proxy' ? field(i, 'path', t('wizard.parts.path'), p.path, 'required') : ''}
+      </div>
+      ${p.type === 'generator' && guestType === 'lxc' ? `<label class="check"><input type="checkbox" name="gpu" data-i="${i}" ${p.gpu ? 'checked' : ''}> ${esc(t('wizard.parts.gpu'))}</label>` : ''}
+      ${p.type !== 'proxy' ? `<label class="check"><input type="checkbox" name="auth" data-i="${i}" ${p.auth ? 'checked' : ''}> ${esc(t('wizard.parts.auth'))}</label>
+        ${p.auth ? `<div class="fields">${field(i, 'authUser', t('wizard.parts.authUser'), p.authUser, 'required maxlength="32"')}</div><p class="hint">${esc(t('wizard.parts.authHint'))}</p>` : ''}
+        ${draft.some((x) => x.type === 'proxy') ? `<p class="hint address" ${url(p) ? '' : 'hidden'}>${esc(t('wizard.parts.address'))} <code>${esc(url(p))}</code></p>` : ''}` : ''}
+      ${p.type === 'portal' && p.path !== '/' ? `<p class="notice">${esc(t('wizard.parts.portalRoot'))}</p>` : ''}
+      ${canRemove ? `<div class="actions"><button type="button" class="danger" data-remove="${i}">${esc(t('wizard.parts.remove'))}</button></div>` : ''}
+    </div>`;
+  }
+
+  // Reads the form back into the draft, so a re-render keeps what was typed.
+  function collect() {
+    const form = document.getElementById('parts');
+    if (!form) return;
+    form.querySelectorAll('[data-i]').forEach((el) => {
+      const p = draft[Number(el.dataset.i)];
+      if (!p) return;
+      if (el.type === 'checkbox') p[el.name] = el.checked;
+      else if (['cpu', 'ram', 'disk'].includes(el.name)) p[el.name] = Number(el.value);
+      else p[el.name] = el.value;
+    });
+    const f = new FormData(form);
+    proxy.domain = String(f.get('domain') || '').trim();
+    proxy.email = String(f.get('email') || proxy.email || '').trim();
+    const tls = form.querySelector('[name=tls]');
+    if (tls) proxy.tls = tls.checked;
+  }
+
+  function render(error) {
+    const hasProxy = draft.some((p) => p.type === 'proxy');
+    const missing = ['distribution', 'portal'].filter((type) => !draft.some((p) => p.type === type));
+    wizardShell(3, `
+      <h2>${esc(t('wizard.parts.title'))}</h2>
+      ${summary}
+      <form id="parts" novalidate>
+        ${hasProxy ? `<div class="card">
+          <h3>${esc(t('wizard.parts.domainTitle'))}</h3>
+          <p class="hint">${esc(t('wizard.parts.domainIntro'))}</p>
+          <div class="fields">
+            <label>${esc(t('wizard.parts.domain'))}<input name="domain" placeholder="tv.example.com" value="${esc(proxy.domain)}" required></label>
+            ${proxy.tls ? `<label>${esc(t('wizard.parts.email'))}<input name="email" type="email" value="${esc(proxy.email)}" required></label>` : ''}
+          </div>
+          <label class="check"><input type="checkbox" name="tls" ${proxy.tls ? 'checked' : ''}> ${esc(t('wizard.parts.tls'))}</label>
+        </div>` : ''}
+        ${draft.map(partCard).join('')}
+        <div class="actions left">
+          <button type="button" id="add-generator">${esc(t('wizard.parts.addGenerator'))}</button>
+          ${missing.map((type) => `<button type="button" data-add="${type}">${esc(t('wizard.parts.add', { part: t(`role.${type}`) }))}</button>`).join('')}
+        </div>
+        <p class="error" ${error ? '' : 'hidden'}>${esc(error || '')}</p>
+        <div class="actions">${backButton()}<button class="primary">${esc(t('wizard.saveNext'))}</button></div>
+      </form>`);
+    bindBack(3);
+    const form = document.getElementById('parts');
+    // Changes that show or hide fields re-render the form.
+    form.querySelectorAll('[name=network], [name=auth], [name=tls]').forEach((el) => { el.onchange = () => { collect(); render(); }; });
+    // The public addresses follow the domain and paths as you type, without a re-render.
+    const updateAddresses = () => {
+      collect();
+      form.querySelectorAll('.part-edit').forEach((card) => {
+        const line = card.querySelector('.address');
+        if (!line) return;
+        const address = url(draft[Number(card.dataset.index)]);
+        line.hidden = !address;
+        line.querySelector('code').textContent = address;
+      });
+    };
+    form.querySelectorAll('[name=domain], [name=path]').forEach((el) => { el.oninput = updateAddresses; });
+    form.querySelectorAll('[data-remove]').forEach((b) => { b.onclick = () => { collect(); draft.splice(Number(b.dataset.remove), 1); render(); }; });
+    document.getElementById('add-generator').onclick = () => {
+      collect();
+      const used = new Set(draft.map((p) => p.hostname));
+      let n = 1;
+      while (used.has(`tv-channel${n}`)) n += 1;
+      const at = draft.filter((p) => p.type === 'generator').length;
+      draft.splice(at, 0, { type: 'generator', ...defaults.generator, ...blank, name: `Channel ${n}`, hostname: `tv-channel${n}`, path: `/channel${n}` });
+      render();
+    };
+    const names = { distribution: ['Distribution', 'tv-mediamtx', '/stream'], portal: ['IPTV portal', 'tv-portal', '/'] };
+    form.querySelectorAll('[data-add]').forEach((b) => {
+      b.onclick = () => {
+        collect();
+        const [name, hostname, path] = names[b.dataset.add];
+        draft.push({ type: b.dataset.add, ...defaults[b.dataset.add], ...blank, name, hostname, path });
+        render();
+      };
+    });
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      collect();
+      try {
+        await api('PUT', '/api/station/parts', { parts: draft, proxy });
+        renderWizard();
+      } catch (err) {
+        render(err.message);
+        const scope = err.index !== undefined ? document.querySelector(`[data-index="${err.index}"]`) : document;
+        const bad = err.field && scope && scope.querySelector(`[name="${err.field}"]`);
+        if (bad) { bad.classList.add('invalid'); bad.focus(); }
+      }
+    };
+  }
+  render();
+}
+
+function renderDeployStep() {
+  wizardShell(4, `
+    <h2>${esc(t('wizard.deploy.title'))}</h2>
+    <p class="notice">${esc(t('wizard.deploy.pending'))}</p>
+    <div class="actions">${backButton()}</div>`);
+  bindBack(4);
 }
 
 async function renderComponents(editId) {

@@ -113,6 +113,12 @@ h3 { font-size: 1rem; margin: 1.5rem 0 .5rem; }
 .row .grow { flex: 1; min-width: 200px; }
 .row .small { width: 110px; }
 .row .wide { flex-basis: 100%; margin: 0; }
+.fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 0 1rem; }
+.part-edit { margin-top: 1rem; }
+.check { display: flex; align-items: center; gap: .5rem; font-weight: 400; }
+.check input { width: auto; margin: 0; }
+input.invalid { border-color: var(--down); outline: 1px solid var(--down); }
+.actions.left { justify-content: flex-start; margin: 1rem 0; }
 .spinner { width: 36px; height: 36px; margin: .5rem auto 0; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 

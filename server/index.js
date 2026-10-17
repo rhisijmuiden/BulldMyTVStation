@@ -7,6 +7,7 @@ const auth = require('./auth');
 const components = require('./components');
 const updater = require('./updater');
 const proxmox = require('./proxmox');
+const parts = require('./parts');
 const pkg = require('../package.json');
 
 const PORT = Number(process.env.PORT) || 8080;
@@ -99,7 +100,13 @@ app.put('/api/settings', auth.requireAuth, (req, res) => {
 // ---------- station wizard ----------
 // The wizard keeps its answers in the "station" section, so it can be left and picked up again.
 app.get('/api/station', auth.requireAuth, (req, res) => {
-  res.json({ station: store.getSection('station'), catalog: components.CATALOG });
+  const station = store.getSection('station');
+  res.json({
+    station: { ...station, parts: station.parts || parts.initialParts(), proxy: station.proxy || { domain: '', email: '', tls: true } },
+    catalog: components.CATALOG,
+    defaults: parts.DEFAULTS,
+    vmMin: parts.VM_MIN,
+  });
 });
 
 // Step 1 (where the station runs), or going back to an earlier step.
@@ -115,7 +122,7 @@ app.put('/api/station', auth.requireAuth, (req, res) => {
 });
 
 app.delete('/api/station', auth.requireAuth, (req, res) => {
-  store.setSection('station', { target: null, step: 1, proxmox: null });
+  store.setSection('station', { target: null, step: 1, proxmox: null, parts: null, proxy: null });
   res.json({ station: store.getSection('station') });
 });
 
@@ -157,6 +164,16 @@ app.put('/api/station/proxmox', auth.requireAuth, wrap(async (req, res) => {
   const saved = { ...target, ...choice, node: found.node, version: found.version, fingerprint: found.fingerprint, savedAt: new Date().toISOString() };
   res.json({ station: store.setSection('station', { proxmox: saved, step: 3 }), poolCreated });
 }));
+
+// ---------- step 3: parts and resources ----------
+app.put('/api/station/parts', auth.requireAuth, (req, res) => {
+  const station = store.getSection('station');
+  if ((station.step || 1) < 3) return res.status(400).json({ error: 'errors.step' });
+  const guestType = station.target === 'proxmox' && station.proxmox ? station.proxmox.guestType : 'vm';
+  const result = parts.validate(req.body || {}, { guestType });
+  if (result.error) return res.status(400).json(result);
+  res.json({ station: store.setSection('station', { ...result.value, step: 4 }) });
+});
 
 // ---------- components and monitoring ----------
 app.get('/api/components', auth.requireAuth, (req, res) => {

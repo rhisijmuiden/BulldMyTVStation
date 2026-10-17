@@ -121,6 +121,28 @@ test('wizard step 2 connects to Proxmox and creates the resource pool', async ()
   assert.strictEqual(vm.body.poolCreated, false);
   assert.deepStrictEqual(fs.readFileSync(process.env.FAKE_PVE_POOLS, 'utf8').trim().split('\n'), ['backups', 'tv-station']);
 
+  // Step 3: parts and resources.
+  const st = (await call('GET', '/api/station')).body.station;
+  assert.deepStrictEqual(st.parts.map((p) => p.type), ['generator', 'distribution', 'portal', 'proxy']);
+  // The VM route was saved above, so every part needs at least 1024 MB and 8 GB.
+  const parts = st.parts.concat([{ type: 'generator', name: 'Channel 2', hostname: 'tv-channel2', cpu: 4, ram: 4096, disk: 16, path: '/channel2', auth: true, authUser: 'editor' }])
+    .map((p) => ({ ...p, ram: Math.max(p.ram, 1024), disk: Math.max(p.disk, 8) }));
+  const put = (body) => call('PUT', '/api/station/parts', body);
+  const proxyCfg = { domain: 'tv.example.com', email: 'me@example.com', tls: true };
+  assert.strictEqual((await put({ parts, proxy: { ...proxyCfg, domain: 'nope' } })).body.error, 'errors.proxyDomain');
+  const dup = await put({ parts: parts.map((p, i) => (i === 4 ? { ...p, path: '/channel1' } : p)), proxy: proxyCfg });
+  assert.deepStrictEqual([dup.body.error, dup.body.index, dup.body.field], ['errors.partPath', 4, 'path']);
+  assert.strictEqual((await put({ parts: parts.concat([{ ...parts[1], hostname: 'x2', path: '/x2' }]), proxy: proxyCfg })).body.error, 'errors.partOnce');
+  assert.strictEqual((await put({ parts: [{ ...parts[0], network: 'static', ip: '10.0.0.5' }], proxy: proxyCfg })).body.error, 'errors.partIp');
+  assert.strictEqual((await put({ parts: [{ ...parts[2], ram: 512 }], proxy: proxyCfg })).body.error, 'errors.partRam');
+  const ok = await put({ parts, proxy: proxyCfg });
+  assert.strictEqual(ok.status, 200);
+  assert.strictEqual(ok.body.station.step, 4);
+  assert.strictEqual(ok.body.station.parts.length, 5);
+  assert.strictEqual(ok.body.station.parts[4].authUser, 'editor');
+  assert.strictEqual(ok.body.station.parts[0].gpu, false, 'no GPU passthrough on the VM route');
+  assert.strictEqual(ok.body.station.parts[3].path, null);
+
   assert.strictEqual((await call('PUT', '/api/station', { step: 2 })).body.station.step, 2);
   assert.strictEqual((await call('PUT', '/api/station', { step: 3 })).status, 400);
   assert.strictEqual((await call('DELETE', '/api/station')).body.station.proxmox, null);

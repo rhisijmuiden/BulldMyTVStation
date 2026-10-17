@@ -31,6 +31,16 @@ const CATALOG = {
     defaultPort: 8080,
     installer: true,
   },
+  // nginx in front of everything, set up by the panel in a plain Debian 13 guest.
+  proxy: {
+    project: 'nginx',
+    repo: 'https://nginx.org',
+    proxmoxScript: 'https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/debian.sh',
+    debianScript: null,
+    builtIn: true,
+    defaultPort: 80,
+    installer: true,
+  },
 };
 
 const CHECK_MS = 30 * 1000;

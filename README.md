@@ -7,12 +7,13 @@ An admin panel that sets up a complete TV station step by step and monitors each
 | Channel generator | [Beeldkrant](https://github.com/rhisijmuiden/TV-Channel-Generator) | Builds the channel and sends it out as an RTMP or SRT stream |
 | Distribution server | [MediaMTX Panel](https://github.com/rhisijmuiden/Mediamtx-controlpanel) | Receives the stream and serves it to viewers (HLS, WebRTC, RTSP, SRT) |
 | IPTV portal | [IPTV Portal](https://github.com/rhisijmuiden/iptv-portal) | Lists the channels for TV boxes and IPTV apps |
+| Reverse proxy | nginx (set up by this panel) | Publishes every part under one public domain, each on its own path |
 
 - Admin panel on port **8080**
 - Runs in a **Debian 13 LXC container** on Proxmox VE, or on a **minimal Debian 13** machine or VPS
 - Everything (code, UI, docs) in English; the web interface is also available in **Dutch**
 
-> **Status:** in development. Login, the one-time admin password, updates from the panel, monitoring of parts you add by hand and wizard steps 1 and 2 (location and the Proxmox connection) work. Choosing and deploying the parts is next.
+> **Status:** in development. Login, the one-time admin password, updates from the panel, monitoring of parts you add by hand and wizard steps 1 to 3 (location, the Proxmox connection and choosing the parts) work. Deploying the parts is next.
 
 ## Install
 
@@ -56,7 +57,8 @@ Lost the password? Run `tvstation-admin-reset` as root on the machine (or in the
 - **Create My TV Station**: a wizard in six steps (location, connection, parts, deploy, connect, overview). You can leave it and pick it up later, and go back to earlier steps.
   1. **Location**: on **one Proxmox server** or on **separate machines** (each part on its own Debian 13 VPS or physical machine).
   2. **Connection** (Proxmox): the panel shows its own SSH public key with the command to allow it on the node (`/root/.ssh/authorized_keys`). After *Connect* it shows the node, its Proxmox version and host key, and lets you choose LXC containers or Debian 13 virtual machines, the storage (only the ones that can hold that type), the network bridge and a **resource pool**. The pool is created when it does not exist yet, and every guest of the station goes into it.
-  3. **Parts**: which parts will be deployed and whether their installer is ready (LXC uses each project's Proxmox script, VMs and separate machines its Debian installer). Choosing resources per part is next.
+  3. **Parts**: the parts of the station and the resources of each one (cores, memory, disk, DHCP or a static address, GPU passthrough for a channel generator in an LXC container). You can add several channel generators (*Channel 1*, *Channel 2*, ...); the other parts exist once. Each part shows whether its installer is ready (LXC uses each project's Proxmox script, VMs and separate machines its Debian installer).
+     The **reverse proxy** (nginx) publishes everything under one public domain, each part on its own path, for example `https://tv.example.com/channel1/` for the first generator and `/stream/` for the distribution server. The IPTV portal stays at `/`, because TV boxes and IPTV apps expect it there. Tick *Let's Encrypt* for a certificate (needs an email address) and *login* on a part to put an nginx password in front of it. The paths are handled in nginx alone, so the projects themselves stay unchanged and keep working on their own.
 - **Components**: the parts this panel monitors. Add a part that already runs by its web interface address; the panel checks it every 30 seconds.
 - **Settings**: the default language and your password.
 - **Version button** (top right): shows the version and build (`v0.1.0 · <commit>`) and opens *Version and updates*, with the build date, the latest change and the branch. The panel checks for a new version once a day and on *Check now*; when there is one, a banner appears and **Update now** installs it. The panel restarts and the page reloads on its own. The log of the last update is shown below.
