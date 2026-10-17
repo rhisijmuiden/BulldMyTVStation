@@ -55,8 +55,9 @@ Written to the data directory (`/var/lib/beeldkrant`, `/var/lib/mediamtx-panel`,
 }
 ```
 
+- `basePath`: the base path without a trailing slash, `""` at the root.
 - `adminUrl`: the local address of the admin interface on this machine (first non-loopback IPv4), including the base path.
-- `apiBase`: the path the service token works on (section 4), including the base path.
+- `apiBase`: the path the service token works on (section 4), including the base path: `<base>/api` for Beeldkrant, `<base>/api/v1` for MediaMTX Panel and IPTV Portal.
 - `serviceToken`: whether a token is configured. Never the token itself.
 - `ports`: extra ports other parts need, by name. MediaMTX Panel: `rtmp`, `rtsp`, `srt`, `hls`, `webrtc`. IPTV Portal: `portal` (the port TV boxes use).
 
