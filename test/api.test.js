@@ -185,6 +185,15 @@ test('an update can only be requested on an installed machine', async () => {
   assert.strictEqual(fs.readFileSync(path.join(DATA_DIR, 'update-request'), 'utf8').trim(), 'force');
 });
 
+test('the release channel is stable by default and can be switched to test', async () => {
+  assert.strictEqual((await call('GET', '/api/info')).body.channel, 'stable');
+  assert.strictEqual((await call('PUT', '/api/info/channel', { channel: 'nightly' })).status, 400);
+  const r = await call('PUT', '/api/info/channel', { channel: 'test' });
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.body.channel, 'test');
+  assert.strictEqual(fs.readFileSync(path.join(DATA_DIR, 'update-channel'), 'utf8').trim(), 'test');
+});
+
 test('logout ends the session', async () => {
   await call('POST', '/api/logout');
   assert.strictEqual((await call('GET', '/api/components')).status, 401);

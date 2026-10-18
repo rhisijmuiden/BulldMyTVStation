@@ -26,7 +26,17 @@ install -d -m 0750 -o tvstation -g tvstation /var/lib/tvstation
 msg_ok "Created service user"
 
 msg_info "Installing Build My TV Station"
-$STD git clone --depth 1 --branch "$TVSTATION_REF" "$TVSTATION_REPO" /opt/tvstation
+# Release channel: see install/debian.sh.
+TVSTATION_CHANNEL="${TVSTATION_CHANNEL:-stable}"
+[[ "$TVSTATION_CHANNEL" == test ]] || TVSTATION_CHANNEL=stable
+CLONE_REF="$TVSTATION_REF"
+if [[ "$TVSTATION_CHANNEL" == stable ]]; then
+  STABLE_TAG="$(git ls-remote --tags --refs "$TVSTATION_REPO" 'refs/tags/v*' 2>/dev/null | awk '{sub("refs/tags/", "", $2); print $2}' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)"
+  [[ -n "$STABLE_TAG" ]] && CLONE_REF="$STABLE_TAG"
+fi
+$STD git clone --depth 1 --branch "$CLONE_REF" "$TVSTATION_REPO" /opt/tvstation
+echo "$TVSTATION_CHANNEL" >/var/lib/tvstation/update-channel
+chown tvstation:tvstation /var/lib/tvstation/update-channel
 cd /opt/tvstation || exit
 $STD npm ci --omit=dev
 chown -R tvstation:tvstation /opt/tvstation

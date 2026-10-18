@@ -30,6 +30,7 @@ Legend: ✅ done · 🔨 in progress · ⬜ planned
 - Proxmox LXC script `ct/tvstation.sh` (community-scripts engine, like `ct/debian.sh`) and installer `install/debian.sh` for a minimal Debian 13 machine or VPS.
 - One-time admin password printed at install, password change forced at first login, `tvstation-admin-reset`.
 - Version button with build, update check and **Update now**; `update` / `tvstation-update` on the shell.
+- Release channels **Stable** (release tags) and **Test** (newest commit on main), chosen in the panel or with `update --channel`.
 - Components page: monitor a part that already runs by its address.
 
 ## 2. Wizard: plan the station ✅
@@ -114,6 +115,7 @@ What is still missing per project, so all parts look and work the same. Each ite
 | Port 8080 | ✅ | ✅ | ✅ (admin) |
 | Info + check for updates | ✅ | ✅ | ✅ |
 | Update from the interface | ✅ | ⬜ (shows how, does not install) | ✅ |
+| Release channels (stable + test) | ⬜ | ⬜ | ⬜ |
 | Microsoft Entra SSO | ✅ | ⬜ | ⬜ |
 | Own SMTP server | ⬜ | ✅ | ✅ |
 | Backup to FTP/FTPS/SCP + restore | ✅ | ⬜ | ⬜ |

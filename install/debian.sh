@@ -7,7 +7,8 @@
 #     bash -c "$(wget -qO- https://raw.githubusercontent.com/rhisijmuiden/BulldMyTVStation/main/install/debian.sh)"
 #
 # Settings (environment variables):
-#     TVSTATION_REF=<branch>   install another branch (default main)
+#     TVSTATION_CHANNEL=test   follow the test release channel instead of stable (can be changed later in the panel)
+#     TVSTATION_REF=<branch>   branch of the test channel (default main)
 #     PORT=<port>              port of the admin panel (default 8080)
 #
 # At the end it prints the admin address, the user "admin" and a one-time password that must be
@@ -49,8 +50,20 @@ id tvstation &>/dev/null || useradd --system --home-dir "$DATA_DIR" --shell /usr
 install -d -m 0750 -o tvstation -g tvstation "$DATA_DIR"
 ok "Created service user"
 
-info "Installing Build My TV Station ($TVSTATION_REF)"
-git clone --quiet --depth 1 --branch "$TVSTATION_REF" "$TVSTATION_REPO" "$APP_DIR"
+# Release channel: stable (default) installs the newest release tag vX.Y.Z, test the newest commit
+# on TVSTATION_REF. Without a stable release yet, stable starts from TVSTATION_REF too and moves to
+# the first stable release with the next update.
+TVSTATION_CHANNEL="${TVSTATION_CHANNEL:-stable}"
+[[ "$TVSTATION_CHANNEL" == test ]] || TVSTATION_CHANNEL=stable
+CLONE_REF="$TVSTATION_REF"
+if [[ "$TVSTATION_CHANNEL" == stable ]]; then
+  STABLE_TAG="$(git ls-remote --tags --refs "$TVSTATION_REPO" 'refs/tags/v*' 2>/dev/null | awk '{sub("refs/tags/", "", $2); print $2}' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)"
+  [[ -n "$STABLE_TAG" ]] && CLONE_REF="$STABLE_TAG"
+fi
+info "Installing Build My TV Station ($TVSTATION_CHANNEL: $CLONE_REF)"
+git clone --quiet --depth 1 --branch "$CLONE_REF" "$TVSTATION_REPO" "$APP_DIR"
+echo "$TVSTATION_CHANNEL" >"$DATA_DIR/update-channel"
+chown tvstation:tvstation "$DATA_DIR/update-channel"
 (cd "$APP_DIR" && npm ci --omit=dev --no-audit --no-fund --loglevel=error)
 chown -R tvstation:tvstation "$APP_DIR"
 ok "Installed Build My TV Station"
