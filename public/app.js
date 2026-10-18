@@ -571,12 +571,12 @@ async function renderInfo() {
         <dt>${esc(t('info.version'))}</dt><dd>${esc(info.version)}</dd>
         <dt>${esc(t('info.build'))}</dt><dd>${info.build.commit ? `<code>${esc(shortCommit(info.build.commit))}</code> · ${esc(formatDateTime(info.build.date))}` : esc(t('info.noBuild'))}</dd>
         ${info.build.subject ? `<dt>${esc(t('info.change'))}</dt><dd>${esc(info.build.subject)}</dd>` : ''}
-        <dt>${esc(t('info.branch'))}</dt><dd>${esc(info.branch)}</dd>
+        <dt>${esc(t('info.channel'))}</dt><dd>${esc(t(`info.channel.${info.channel}`))}${info.channel === 'test' ? ` · <code>${esc(info.branch)}</code>` : ''}</dd>
         <dt>${esc(t('info.lastCheck'))}</dt><dd>${info.checkedAt ? esc(formatDateTime(info.checkedAt)) : esc(t('info.never'))}</dd>
       </dl>
       ${info.error ? `<p class="error">${esc(t(info.error, { branch: info.branch }))}</p>` : ''}
       ${updating ? `<p class="notice">${esc(t('info.updating'))}</p>`
-        : info.available ? `<p class="notice">${esc(t('info.available', { commit: shortCommit(info.latest) }))}</p>`
+        : info.available ? `<p class="notice">${esc(t('info.available', { commit: info.latestVersion ? `v${info.latestVersion}` : shortCommit(info.latest) }))}</p>`
         : info.checkedAt && !info.error ? `<p class="ok">${esc(t('info.upToDate'))}</p>` : ''}
       ${!info.canUpdate ? `<p class="hint">${esc(t('info.notInstalled'))}</p>` : ''}
       <p class="error" id="info-error" hidden></p>
@@ -586,12 +586,30 @@ async function renderInfo() {
         ${info.canUpdate && info.available ? `<button id="update" class="primary" ${updating ? 'disabled' : ''}>${esc(t('info.updateNow'))}</button>` : ''}
       </div>
     </div>
+    <h2>${esc(t('info.channelTitle'))}</h2>
+    <form id="channel" class="card">
+      <p>${esc(t('info.channelIntro'))}</p>
+      <div class="choices">${info.channels.map((v) => `
+        <label class="choice"><input type="radio" name="channel" value="${v}" ${info.channel === v ? 'checked' : ''} ${updating ? 'disabled' : ''}>
+          <span><strong>${esc(t(`info.channel.${v}`))}</strong><span class="hint">${esc(t(`info.channel.${v}.about`, { branch: info.branch }))}</span></span>
+        </label>`).join('')}</div>
+      <p class="error" hidden></p>
+    </form>
     ${info.log ? `<h2>${esc(t('info.log'))}</h2><pre class="log">${esc(info.log)}</pre>` : ''}`);
 
   const fail = (err) => { const e = document.getElementById('info-error'); e.textContent = err.message; e.hidden = false; };
   document.getElementById('check').onclick = async (e) => {
     e.target.disabled = true;
     try { state.info = await api('POST', '/api/info/check'); renderInfo(); } catch (err) { fail(err); e.target.disabled = false; }
+  };
+  const channelForm = document.getElementById('channel');
+  channelForm.onchange = async (e) => {
+    channelForm.querySelectorAll('input').forEach((el) => { el.disabled = true; });
+    try {
+      await api('PUT', '/api/info/channel', { channel: e.target.value });
+      state.info = await api('POST', '/api/info/check');
+      renderInfo();
+    } catch (err) { showError(channelForm, err); channelForm.querySelectorAll('input').forEach((el) => { el.disabled = false; }); }
   };
   const start = async (force) => {
     if (force && !confirm(t('info.confirmReinstall'))) return;

@@ -217,6 +217,11 @@ app.post('/api/info/check', auth.requireAuth, wrap(async (req, res) => {
   res.json(await updater.check());
 }));
 
+app.put('/api/info/channel', auth.requireAuth, wrap(async (req, res) => {
+  if (!updater.setChannel((req.body || {}).channel)) return res.status(400).json({ error: 'errors.updateChannel' });
+  res.json(await updater.status());
+}));
+
 app.post('/api/info/update', auth.requireAuth, wrap(async (req, res) => {
   if (!updater.requestUpdate({ force: !!(req.body || {}).force })) return res.status(409).json({ error: 'errors.updateNotInstalled' });
   res.json(await updater.status());

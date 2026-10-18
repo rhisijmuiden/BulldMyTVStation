@@ -62,7 +62,7 @@ The script uses the [community-scripts](https://github.com/community-scripts/Pro
 pct exec <CTID> -- cat /var/lib/tvstation/initial-admin-password
 ```
 
-Update later by running `update` in the container shell. It updates everything in one go: the code, its dependencies, the systemd units and the commands themselves, then restarts the panel.
+Update later by running `update` in the container shell. It updates everything in one go: the code, its dependencies, the systemd units and the commands themselves, then restarts the panel. `update --channel test` or `update --channel stable` switches the [release channel](#release-channels) first.
 
 ### On a Debian 13 machine or VPS
 
@@ -74,7 +74,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/rhisijmuiden/BulldMyTVSt
 
 Without curl, use `wget -qO-` instead of `curl -fsSL`. The installer uses Debian's own Node.js package, installs the panel in `/opt/tvstation` with its data in `/var/lib/tvstation`, and prints the admin address and the one-time password at the end. Update later with `tvstation-update` (the same command as `update` in the container); running the installer again does the same.
 
-Settings: `PORT=<port>` changes the panel port, `TVSTATION_REF=<branch>` installs another branch.
+Settings: `PORT=<port>` changes the panel port, `TVSTATION_CHANNEL=test` installs from the test channel instead of stable, `TVSTATION_REF=<branch>` sets the branch the test channel follows (default `main`).
 
 ### First login
 
@@ -92,7 +92,18 @@ Lost the password? Run `tvstation-admin-reset` as root on the machine (or in the
      The **reverse proxy** (nginx) publishes everything under one public domain, each part on its own path, for example `https://tv.example.com/channel1/` for the first generator and `/stream/` for the distribution server. The IPTV portal stays at `/`, because TV boxes and IPTV apps expect it there. Tick *Let's Encrypt* for a certificate (needs an email address) and *login* on a part to put an nginx password in front of it. The paths are handled in nginx alone, so the projects themselves stay unchanged and keep working on their own.
 - **Components**: the parts this panel monitors. Add a part that already runs by its web interface address; the panel checks it every 30 seconds.
 - **Settings**: the default language and your password.
-- **Version button** (top right): shows the version and build (`v0.1.0 · <commit>`) and opens *Version and updates*, with the build date, the latest change and the branch. The panel checks for a new version once a day and on *Check now*; when there is one, a banner appears and **Update now** installs it. The panel restarts and the page reloads on its own. The log of the last update is shown below.
+- **Version button** (top right): shows the version and build (`v0.1.0 · <commit>`) and opens *Version and updates*, with the build date, the latest change and the release channel. The panel checks for a new version once a day and on *Check now*; when there is one, a banner appears and **Update now** installs it. The panel restarts and the page reloads on its own. The log of the last update is shown below.
+
+### Release channels
+
+*Version and updates* has a **Release channel** choice, which the `update` command follows too:
+
+| Channel | Updates to | For |
+|---|---|---|
+| **Stable** (default) | the newest release tag `vX.Y.Z` | a station on air |
+| **Test** | the newest commit on `main` (or `TVSTATION_REF`) | trying out what comes next |
+
+A stable release is a GitHub release (or tag) named `vX.Y.Z`; a tag with a suffix, like `v0.5.0-rc.1`, counts as a pre-release and stable skips it. Switching from Test back to Stable never installs an older version: the panel stays where it is until a stable release at least as new comes out. The choice is stored in `/var/lib/tvstation/update-channel`; on the shell, `update --channel stable|test` switches and updates in one go.
 
 Updating from the panel runs the same `tvstation-update` command as root through the `tvstation-update.path` and `tvstation-update.service` systemd units, so the web server itself never needs root.
 
